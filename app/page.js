@@ -1,0 +1,21 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      router.replace(data.session ? "/dashboard/documents" : "/login");
+    });
+  }, [router]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F7F4EC]">
+      <p className="text-sm text-[#8A857A]">Chargement…</p>
+    </div>
+  );
+}
