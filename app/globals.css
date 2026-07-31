@@ -8,17 +8,27 @@ body {
 }
 
 @media print {
+  @page {
+    size: letter;
+    margin: 0;
+  }
   body * {
     visibility: hidden;
   }
   #print-area,
   #print-area * {
     visibility: visible;
+    font-family: 'Times New Roman', Times, serif !important;
   }
   #print-area {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
+  }
+  #certificate-paper {
+    box-shadow: none !important;
+    width: 8.5in !important;
+    min-height: 11in !important;
   }
 }
