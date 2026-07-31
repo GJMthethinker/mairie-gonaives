@@ -188,7 +188,12 @@ export default function DocumentsPage() {
 }
 
 function DocumentPreview({ template, doc }) {
-  const body = template.body.replace(/{{(.*?)}}/g, (_, key) => doc.values[key.trim()] ?? "");
+    const formattedValues = {};
+    (template.fields || []).forEach((f) => {
+          const raw = doc.values[f.key];
+          formattedValues[f.key] = f.type === "date" ? frDate(raw) : raw;
+    });
+    const body = template.body.replace(/{{(.*?)}}/g, (_, key) => formattedValues[key.trim()] ?? doc.values[key.trim()] ?? "");
   const independenceYear = new Date(doc.created_at).getFullYear() - 1803;
   return (
     <div
