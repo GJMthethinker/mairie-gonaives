@@ -189,27 +189,45 @@ export default function DocumentsPage() {
 
 function DocumentPreview({ template, doc }) {
   const body = template.body.replace(/{{(.*?)}}/g, (_, key) => doc.values[key.trim()] ?? "");
+  const independenceYear = new Date(doc.created_at).getFullYear() - 1803;
   return (
-    <div className="bg-[#FDFBF5] border border-[#E3DCC8] rounded-sm p-10 font-serif text-[#242220]" style={{ minHeight: 500 }}>
-      <div className="flex items-start justify-between mb-8 border-b-2 border-[#B8862E] pb-4">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-[#8A6A2F]">République d'Haïti</p>
-          <p className="text-lg leading-tight">Mairie des Gonaïves</p>
-          <p className="text-[10px] text-[#8A857A] mt-1">{template.services?.name}</p>
-        </div>
-        <div className="text-right text-[11px] text-[#8A857A]">
-          <p>{doc.doc_number}</p>
-          <p>{frDate(doc.created_at)}</p>
-        </div>
+    <div
+      id="certificate-paper"
+      className="bg-white text-black mx-auto shadow-sm"
+      style={{
+        fontFamily: "'Times New Roman', Times, serif",
+        width: "8.5in",
+        minHeight: "11in",
+        padding: "1in",
+        boxSizing: "border-box",
+      }}
+    >
+      <div className="text-center">
+        <p className="italic text-sm">Liberté • Égalité • Fraternité</p>
+        <p className="font-bold text-lg mt-3">RÉPUBLIQUE D'HAÏTI</p>
+        <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
+        <p className="font-bold text-lg mt-1">MAIRIE DES GONAÏVES</p>
       </div>
-      <h3 className="text-center uppercase tracking-wide text-sm mb-8">{template.name}</h3>
-      <p className="whitespace-pre-line leading-relaxed text-[15px]">{body}</p>
-      <div className="mt-16 text-right text-sm">
-        <p>Fait aux Gonaïves, le {frDate(doc.created_at)}</p>
-        <p className="mt-10">_____________________________</p>
-        <p className="text-xs text-[#8A857A]">
-          {template.signatory || `Signature autorisée — ${template.services?.name}`}
-        </p>
+
+      <p className="text-right italic text-sm mt-8">Réf : {doc.doc_number}</p>
+
+      <h3 className="text-center font-bold underline text-base mt-6 mb-10">{template.name.toUpperCase()}</h3>
+
+      <p className="whitespace-pre-line leading-relaxed text-[15px] text-justify">{body}</p>
+
+      <p className="mt-10 text-[15px]">
+        Gonaïves, le {frDate(doc.created_at)}, An {independenceYear}ème de l'Indépendance.
+      </p>
+
+      <div className="mt-10 text-right text-[15px]">
+        <p>Pour la Commission Municipale,</p>
+        <p className="mt-12">_____________________________</p>
+        <p>{template.signatory || "Signature autorisée"}</p>
+      </div>
+
+      <div className="mt-16 pt-3 border-t border-black text-center text-xs">
+        <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
+        <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
       </div>
     </div>
   );
