@@ -207,7 +207,9 @@ function DocumentPreview({ template, doc }) {
       <div className="mt-16 text-right text-sm">
         <p>Fait aux Gonaïves, le {frDate(doc.created_at)}</p>
         <p className="mt-10">_____________________________</p>
-        <p className="text-xs text-[#8A857A]">Signature autorisée</p>
+        <p className="text-xs text-[#8A857A]">
+          {template.signatory || `Signature autorisée — ${template.services?.name}`}
+        </p>
       </div>
     </div>
   );
@@ -218,6 +220,7 @@ function NewTemplateModal({ services, onClose, onSaved }) {
   const [serviceId, setServiceId] = useState(services[0]?.id || "");
   const [fields, setFields] = useState([{ key: "champ1", label: "Champ 1", type: "text" }]);
   const [body, setBody] = useState("");
+  const [signatory, setSignatory] = useState("");
   const [saving, setSaving] = useState(false);
 
   function updateField(i, updates) {
@@ -236,6 +239,7 @@ function NewTemplateModal({ services, onClose, onSaved }) {
       service_id: serviceId,
       fields: fields.filter((f) => f.key.trim() && f.label.trim()),
       body,
+      signatory: signatory.trim() || null,
     });
     setSaving(false);
     if (error) {
@@ -309,6 +313,16 @@ function NewTemplateModal({ services, onClose, onSaved }) {
             >
               + Ajouter un champ
             </button>
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
+              Signataire (optionnel — ex : "Gina JEANTY, Présidente")
+            </label>
+            <input
+              value={signatory}
+              onChange={(e) => setSignatory(e.target.value)}
+              className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
+            />
           </div>
           <div>
             <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
