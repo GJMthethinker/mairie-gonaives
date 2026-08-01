@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 function frDate(iso) {
@@ -8,13 +8,60 @@ function frDate(iso) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+function useReveal() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const children = el.querySelectorAll(".reveal");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    children.forEach((child, i) => {
+      child.style.transitionDelay = `${Math.min(i, 6) * 80}ms`;
+      observer.observe(child);
+    });
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
+const CalendarIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B8862E" strokeWidth="1.6">
+    <rect x="3" y="5" width="18" height="16" rx="1.5" />
+    <path d="M3 9.5h18M8 3v4M16 3v4" strokeLinecap="round" />
+  </svg>
+);
+const MessageIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B8862E" strokeWidth="1.6">
+    <path d="M4 5.5h16v10.5H9l-4 3.5V16H4z" strokeLinejoin="round" />
+  </svg>
+);
+const HeartIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B8862E" strokeWidth="1.6">
+    <path d="M12 20s-7.5-4.6-9.8-9.1C.6 7.5 2.4 4.2 5.8 4c2 -0.1 3.5 1 6.2 3.6C14.7 5 16.2 3.9 18.2 4c3.4 0.2 5.2 3.5 3.6 6.9C19.5 15.4 12 20 12 20z" />
+  </svg>
+);
+
 export default function HomePage() {
   const [news, setNews] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeForm, setActiveForm] = useState(null); // 'rdv' | 'doleance' | 'suggestion' | 'engagement'
+  const [mounted, setMounted] = useState(false);
+  const newsRef = useReveal();
+  const actionsRef = useReveal();
 
   useEffect(() => {
+    setMounted(true);
     async function load() {
       const { data: n } = await supabase.from("news").select("*").order("published_at", { ascending: false }).limit(10);
       const { data: s } = await supabase.from("services").select("*").order("name");
@@ -25,46 +72,71 @@ export default function HomePage() {
     load();
   }, []);
 
+  const independenceYear = new Date().getFullYear() - 1803;
+
   return (
     <div className="min-h-screen bg-[#F7F4EC] text-[#242220]">
       {/* En-tête */}
-      <header className="bg-[#1B2A4A] text-white">
+      <header className="bg-[#1B2A4A] text-white relative z-10">
         <div className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border-2 border-[#B8862E] text-[#B8862E] flex items-center justify-center font-serif text-sm shrink-0">
-              MG
-            </div>
+            <img src="/logo-mairie.jpg" alt="Mairie des Gonaïves" className="w-10 h-10 rounded-full object-cover" />
             <div>
               <p className="text-[10px] uppercase tracking-widest text-[#B8862E]">République d'Haïti</p>
               <p className="font-serif text-lg leading-tight">Mairie des Gonaïves</p>
             </div>
           </div>
-          <a href="/login" className="text-sm border border-white/30 rounded-sm px-4 py-2 hover:bg-white/10">
+          <a href="/login" className="text-sm border border-white/30 rounded-sm px-4 py-2 hover:bg-white/10 hover:border-white/60 transition-colors">
             Espace employé
           </a>
         </div>
       </header>
 
-      {/* Bandeau d'intro */}
-      <section className="bg-[#12203a] text-[#E9E4D6] py-14 px-6 text-center">
-        <h1 className="font-serif text-3xl md:text-4xl mb-3">Bienvenue à la Mairie des Gonaïves</h1>
-        <p className="text-[#B9B4A3] max-w-xl mx-auto">
-          Suivez nos actualités, prenez rendez-vous avec un responsable, ou faites-nous part de vos doléances et suggestions.
-        </p>
+      {/* Héros */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0E1A30] via-[#152443] to-[#1B2A4A] text-[#E9E4D6] py-20 px-6 text-center">
+        <img
+          src="/palmiste.jpg"
+          alt=""
+          aria-hidden="true"
+          className="float-slow pointer-events-none select-none absolute -right-16 -top-10 w-[340px] opacity-[0.09] md:w-[420px]"
+        />
+        <div className="relative">
+          {mounted && (
+            <p className="hero-in text-[11px] uppercase tracking-[0.2em] text-[#B8862E] mb-4">
+              An {independenceYear}ème de l'Indépendance · Gonaïves, Artibonite
+            </p>
+          )}
+          {mounted && (
+            <h1 className="hero-in font-serif text-3xl md:text-5xl mb-4" style={{ animationDelay: "80ms" }}>
+              Bienvenue à la Mairie des Gonaïves
+            </h1>
+          )}
+          {mounted && (
+            <p className="hero-in text-[#B9B4A3] max-w-xl mx-auto" style={{ animationDelay: "160ms" }}>
+              Suivez nos actualités, prenez rendez-vous avec un responsable, ou faites-nous part de vos doléances et suggestions.
+            </p>
+          )}
+          {mounted && (
+            <div className="hero-in mx-auto mt-8 h-px w-24 bg-gradient-to-r from-transparent via-[#B8862E] to-transparent" style={{ animationDelay: "240ms" }} />
+          )}
+        </div>
       </section>
 
-      <main className="max-w-5xl mx-auto px-6 py-12 space-y-16">
+      <main className="max-w-5xl mx-auto px-6 py-16 space-y-20">
         {/* Actualités */}
-        <section>
-          <h2 className="font-serif text-2xl text-[#1B2A4A] mb-6">Actualités</h2>
+        <section ref={newsRef}>
+          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">Actualités</h2>
           {loading ? (
             <p className="text-sm text-[#8A857A]">Chargement…</p>
           ) : news.length === 0 ? (
-            <p className="text-sm text-[#8A857A]">Aucune actualité publiée pour le moment.</p>
+            <p className="reveal text-sm text-[#8A857A]">Aucune actualité publiée pour le moment.</p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
               {news.map((n) => (
-                <div key={n.id} className="bg-white border border-[#E3DCC8] rounded-sm p-5">
+                <div
+                  key={n.id}
+                  className="reveal bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
+                >
                   <p className="text-[11px] text-[#B8862E] uppercase tracking-wide mb-2">{frDate(n.published_at)}</p>
                   <p className="font-medium mb-2">{n.title}</p>
                   <p className="text-sm text-[#5B584F] whitespace-pre-line">{n.content}</p>
@@ -75,28 +147,31 @@ export default function HomePage() {
         </section>
 
         {/* Actions visiteurs */}
-        <section>
-          <h2 className="font-serif text-2xl text-[#1B2A4A] mb-6">Nous contacter</h2>
+        <section ref={actionsRef}>
+          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">Nous contacter</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             <button
               onClick={() => setActiveForm("rdv")}
-              className="text-left bg-white border border-[#E3DCC8] hover:border-[#B8862E] rounded-sm p-5"
+              className="reveal text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
             >
-              <p className="font-medium text-sm">Prendre rendez-vous</p>
+              <CalendarIcon />
+              <p className="font-medium text-sm mt-3">Prendre rendez-vous</p>
               <p className="text-xs text-[#8A857A] mt-1">Avec un responsable d'une direction</p>
             </button>
             <button
               onClick={() => setActiveForm("doleance")}
-              className="text-left bg-white border border-[#E3DCC8] hover:border-[#B8862E] rounded-sm p-5"
+              className="reveal text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
             >
-              <p className="font-medium text-sm">Laisser un message</p>
+              <MessageIcon />
+              <p className="font-medium text-sm mt-3">Laisser un message</p>
               <p className="text-xs text-[#8A857A] mt-1">Doléance ou suggestion</p>
             </button>
             <button
               onClick={() => setActiveForm("engagement")}
-              className="text-left bg-white border border-[#E3DCC8] hover:border-[#B8862E] rounded-sm p-5"
+              className="reveal text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
             >
-              <p className="font-medium text-sm">Proposer mon aide</p>
+              <HeartIcon />
+              <p className="font-medium text-sm mt-3">Proposer mon aide</p>
               <p className="text-xs text-[#8A857A] mt-1">Prendre un engagement envers la mairie</p>
             </button>
           </div>
@@ -109,7 +184,7 @@ export default function HomePage() {
       )}
       {activeForm === "engagement" && <FeedbackModal defaultType="engagement" onClose={() => setActiveForm(null)} />}
 
-      <footer className="text-center text-xs text-[#8A857A] py-8">
+      <footer className="text-center text-xs text-[#8A857A] py-10 border-t border-[#E3DCC8] mt-8">
         Mairie des Gonaïves, Artibonite, Haïti (W.I)
       </footer>
     </div>
