@@ -68,6 +68,7 @@ export default function DashboardLayout({ children }) {
     { href: "/dashboard/documents", label: "Documents" },
     { href: "/dashboard/registre", label: "Registre" },
     { href: "/dashboard/taches", label: "Tâches" },
+    { href: "/dashboard/messages", label: "Messages" },
   ];
 
   return (
@@ -97,6 +98,9 @@ export default function DashboardLayout({ children }) {
             ))}
           </nav>
           <div className="p-3 border-t border-white/10">
+            <a href="/" className="block px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 rounded-sm">
+              ← Site public
+            </a>
             <button
               onClick={handleLogout}
               className="w-full text-left px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 rounded-sm"
