@@ -70,6 +70,8 @@ export default function DashboardLayout({ children }) {
     { href: "/dashboard/taches", label: "Tâches" },
     { href: "/dashboard/agenda", label: "Agenda" },
     { href: "/dashboard/messages", label: "Messages" },
+    { href: "/dashboard/annonces", label: "Annonces" },
+    { href: "/dashboard/annonces", label: "Annonces" },
   ];
 
   return (
