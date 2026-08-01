@@ -68,6 +68,7 @@ export default function DashboardLayout({ children }) {
     { href: "/dashboard/documents", label: "Documents" },
     { href: "/dashboard/registre", label: "Registre" },
     { href: "/dashboard/taches", label: "Tâches" },
+    { href: "/dashboard/agenda", label: "Agenda" },
     { href: "/dashboard/messages", label: "Messages" },
   ];
 
