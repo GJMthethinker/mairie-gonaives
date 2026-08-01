@@ -8,7 +8,12 @@ const fieldTypeLabel = { text: "Texte", textarea: "Texte long", date: "Date", nu
 
 function frDate(iso) {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+    const parts = iso.split("-");
+    if (parts.length === 3 && parts[2].length === 2) {
+          const [y, m, d] = parts.map(Number);
+          return new Date(y, m - 1, d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+    }
+    return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 export default function DocumentsPage() {
