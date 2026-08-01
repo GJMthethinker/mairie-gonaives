@@ -7,6 +7,40 @@ body {
   color: #242220;
 }
 
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-10px) rotate(-2deg); }
+}
+@keyframes drawLine {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+}
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.float-slow {
+  animation: floatSlow 7s ease-in-out infinite;
+}
+.hero-in {
+  animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal.revealed { opacity: 1; transform: none; transition: none; }
+  .float-slow, .hero-in { animation: none !important; }
+}
+
 @media print {
   @page {
     size: letter;
@@ -29,6 +63,6 @@ body {
   #certificate-paper {
     box-shadow: none !important;
     width: 8.5in !important;
-    min-height: 11in !important;
+    height: 11in !important;
   }
 }
