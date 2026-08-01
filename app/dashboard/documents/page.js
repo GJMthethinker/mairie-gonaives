@@ -8,12 +8,12 @@ const fieldTypeLabel = { text: "Texte", textarea: "Texte long", date: "Date", nu
 
 function frDate(iso) {
   if (!iso) return "";
-    const parts = iso.split("-");
-    if (parts.length === 3 && parts[2].length === 2) {
-          const [y, m, d] = parts.map(Number);
-          return new Date(y, m - 1, d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-    }
-    return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  const parts = iso.split("-");
+  if (parts.length === 3 && parts[2].length === 2) {
+    const [y, m, d] = parts.map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  }
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 export default function DocumentsPage() {
@@ -193,51 +193,64 @@ export default function DocumentsPage() {
 }
 
 function DocumentPreview({ template, doc }) {
-    const formattedValues = {};
-    (template.fields || []).forEach((f) => {
-          const raw = doc.values[f.key];
-          formattedValues[f.key] = f.type === "date" ? frDate(raw) : raw;
-    });
-    const body = template.body.replace(/{{(.*?)}}/g, (_, key) => formattedValues[key.trim()] ?? doc.values[key.trim()] ?? "");
+  const formattedValues = {};
+  (template.fields || []).forEach((f) => {
+    const raw = doc.values[f.key];
+    formattedValues[f.key] = f.type === "date" ? frDate(raw) : raw;
+  });
+  const body = template.body.replace(/{{(.*?)}}/g, (_, key) => formattedValues[key.trim()] ?? doc.values[key.trim()] ?? "");
   const independenceYear = new Date(doc.created_at).getFullYear() - 1803;
+
   return (
     <div
       id="certificate-paper"
-      className="bg-white text-black mx-auto shadow-sm"
+      className="bg-white text-black mx-auto shadow-sm flex flex-col"
       style={{
         fontFamily: "'Times New Roman', Times, serif",
         width: "8.5in",
-        minHeight: "11in",
-        padding: "1in",
+        height: "11in",
+        padding: "0.75in 1in",
         boxSizing: "border-box",
       }}
     >
-      <div className="text-center">
-        <p className="italic text-sm">Liberté • Égalité • Fraternité</p>
-        <p className="font-bold text-lg mt-3">RÉPUBLIQUE D'HAÏTI</p>
-        <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
-        <p className="font-bold text-lg mt-1">MAIRIE DES GONAÏVES</p>
+      {/* En-tête avec logos */}
+      <div className="flex items-start justify-between shrink-0">
+        <img src="/logo-mairie.png" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
+        <div className="text-center flex-1 px-2">
+          <img src="/palmiste.png" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
+          <p className="italic text-sm mt-1">Liberté • Égalité • Fraternité</p>
+          <p className="font-bold text-lg mt-1">RÉPUBLIQUE D'HAÏTI</p>
+          <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
+          <p className="font-bold text-lg mt-1">MAIRIE DES GONAÏVES</p>
+        </div>
+        <img src="/logo-mairie.png" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
       </div>
 
-      <p className="text-right italic text-sm mt-8">Réf : {doc.doc_number}</p>
+      <p className="text-right italic text-sm mt-6 shrink-0">Réf : {doc.doc_number}</p>
 
-      <h3 className="text-center font-bold underline text-base mt-6 mb-10">{template.name.toUpperCase()}</h3>
+      <h3 className="text-center font-bold underline text-base mt-4 mb-8 shrink-0">{template.name.toUpperCase()}</h3>
 
-      <p className="whitespace-pre-line leading-relaxed text-[15px] text-justify">{body}</p>
-
-      <p className="mt-10 text-[15px]">
-        Gonaïves, le {frDate(doc.created_at)}, An {independenceYear}ème de l'Indépendance.
-      </p>
-
-      <div className="mt-10 text-right text-[15px]">
-        <p>Pour la Commission Municipale,</p>
-        <p className="mt-12">_____________________________</p>
-        <p>{template.signatory || "Signature autorisée"}</p>
+      {/* Corps — grandit pour occuper l'espace disponible */}
+      <div className="flex-1">
+        <p className="whitespace-pre-line leading-relaxed text-[15px] text-justify">{body}</p>
       </div>
 
-      <div className="mt-16 pt-3 border-t border-black text-center text-xs">
-        <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
-        <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
+      {/* Pied de page — toujours collé en bas de la feuille */}
+      <div className="shrink-0">
+        <p className="text-[15px]">
+          Gonaïves, le {frDate(doc.created_at)}, An {independenceYear}ème de l'Indépendance.
+        </p>
+
+        <div className="mt-8 text-right text-[15px]">
+          <p>Pour la Commission Municipale,</p>
+          <p className="mt-12">_____________________________</p>
+          <p>{template.signatory || "Signature autorisée"}</p>
+        </div>
+
+        <div className="mt-10 pt-3 border-t border-black text-center text-xs">
+          <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
+          <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
+        </div>
       </div>
     </div>
   );
