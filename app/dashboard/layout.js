@@ -3,7 +3,9 @@
 import { useEffect, useState, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { triggerPush } from "@/lib/push";
 import NotificationBell from "./notification-bell";
+import PushSetup from "./push-setup";
 
 const AppContext = createContext(null);
 export function useApp() {
@@ -91,13 +93,16 @@ export default function DashboardLayout({ children }) {
       for (const t of dueTasks) {
         if (alreadyNotified.has(t.id)) continue;
         const overdue = t.due_date < todayStr;
+        const title = overdue ? `Tâche en retard : ${t.title}` : `Échéance proche : ${t.title}`;
+        const body = overdue ? "Cette tâche a dépassé sa date d'échéance." : "Cette tâche arrive à échéance bientôt.";
         await supabase.from("notifications").insert({
           user_id: prof.id,
           task_id: t.id,
-          title: overdue ? `Tâche en retard : ${t.title}` : `Échéance proche : ${t.title}`,
-          body: overdue ? "Cette tâche a dépassé sa date d'échéance." : "Cette tâche arrive à échéance bientôt.",
+          title,
+          body,
           link: "/dashboard/agenda",
         });
+        triggerPush({ userId: prof.id, title, body, link: "/dashboard/agenda" });
       }
     }
 
@@ -255,7 +260,10 @@ export default function DashboardLayout({ children }) {
               </p>
             </div>
           </div>
-          <div key={pathname} className="dash-in p-6 md:p-10 max-w-6xl mx-auto">{children}</div>
+          <div key={pathname} className="dash-in p-6 md:p-10 max-w-6xl mx-auto">
+            <PushSetup userId={profile.id} />
+            {children}
+          </div>
         </main>
       </div>
     </AppContext.Provider>
