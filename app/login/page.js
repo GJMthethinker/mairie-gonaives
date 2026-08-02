@@ -67,8 +67,11 @@ export default function LoginPage() {
             {loading ? "Connexion..." : "Se connecter"}
           </button>
         </form>
-        <p className="text-[11px] text-[#8A857A] mt-6 leading-relaxed">
-          Les comptes sont créés par le super administrateur depuis le tableau Supabase.
+        <p className="text-sm text-center text-[#8A857A] mt-6">
+          Pas encore de compte ?{" "}
+          <a href="/inscription" className="text-[#1B2A4A] font-medium underline">
+            Créer un compte
+          </a>
         </p>
       </div>
     </div>
