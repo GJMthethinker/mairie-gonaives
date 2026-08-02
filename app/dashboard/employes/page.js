@@ -18,7 +18,7 @@ export default function EmployesPage() {
   async function load() {
     const { data: profs } = await supabase
       .from("profiles")
-      .select("id, full_name, role, status, service_id, services(name)")
+      .select("id, full_name, role, status, service_id, phone, services(name)")
       .order("full_name");
     const { data: g } = await supabase.from("profile_access_grants").select("*");
     setPeople(profs || []);
@@ -61,7 +61,7 @@ export default function EmployesPage() {
               <div key={p.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="font-medium text-sm">{p.full_name}</p>
-                  <p className="text-xs text-[#8A857A]">{p.services?.name || "—"}</p>
+                  <p className="text-xs text-[#8A857A]">{p.services?.name || "—"}{p.phone ? ` · ${p.phone}` : ""}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => setStatus(p.id, "approuve")} className="text-xs bg-[#1B2A4A] text-white px-3 py-1.5 rounded-sm">
