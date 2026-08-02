@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { triggerPush } from "@/lib/push";
 
 const statusMeta = {
   en_attente: { label: "En attente", color: "#B8862E" },
@@ -164,6 +165,7 @@ function NotifyModal({ target, onClose }) {
       body: body.trim() || null,
       created_by: session.user.id,
     });
+    triggerPush({ userId: target.id, title: title.trim(), body: body.trim(), link: "/dashboard" });
     setSaving(false);
     setSent(true);
   }
