@@ -163,11 +163,16 @@ export default function HomePage() {
               {news.map((n) => (
                 <div
                   key={n.id}
-                  className="reveal bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
+                  className="reveal bg-white border border-[#E3DCC8] rounded-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
                 >
-                  <p className="text-[11px] text-[#B8862E] uppercase tracking-wide mb-2">{frDate(n.published_at)}</p>
-                  <p className="font-medium mb-2">{n.title}</p>
-                  <p className="text-sm text-[#5B584F] whitespace-pre-line">{n.content}</p>
+                  {n.image_url && (
+                    <img src={n.image_url} alt={n.title} className="w-full h-44 object-cover" />
+                  )}
+                  <div className="p-5">
+                    <p className="text-[11px] text-[#B8862E] uppercase tracking-wide mb-2">{frDate(n.published_at)}</p>
+                    <p className="font-medium mb-2">{n.title}</p>
+                    <p className="text-sm text-[#5B584F] whitespace-pre-line">{n.content}</p>
+                  </div>
                 </div>
               ))}
             </div>
