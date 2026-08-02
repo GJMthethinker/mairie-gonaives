@@ -49,7 +49,7 @@ export default function AnnoncesPage() {
       <div className="space-y-3">
         {announcements.length === 0 && <p className="text-sm text-[#8A857A]">Aucune annonce pour le moment.</p>}
         {announcements.map((a) => (
-          <div key={a.id} className="bg-white border border-[#E3DCC8] rounded-sm p-5">
+          <div key={a.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-5">
             <div className="flex items-start justify-between gap-3 mb-2">
               <p className="font-medium">{a.title}</p>
               <button onClick={() => remove(a.id)} className="text-[11px] text-[#A8332B] shrink-0">Supprimer</button>
