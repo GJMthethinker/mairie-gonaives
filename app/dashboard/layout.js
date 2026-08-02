@@ -3,6 +3,7 @@
 import { useEffect, useState, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import NotificationBell from "./notification-bell";
 
 const AppContext = createContext(null);
 export function useApp() {
@@ -58,6 +59,46 @@ export default function DashboardLayout({ children }) {
       setProfile(prof);
       setServices(svcs || []);
       setLoading(false);
+
+      if (prof && prof.status === "approuve" && prof.role !== "superadmin" && prof.service_id) {
+        generateTaskReminders(prof);
+      }
+    }
+
+    async function generateTaskReminders(prof) {
+      const today = new Date();
+      const in2days = new Date();
+      in2days.setDate(today.getDate() + 2);
+      const todayStr = today.toISOString().slice(0, 10);
+      const in2Str = in2days.toISOString().slice(0, 10);
+
+      const { data: dueTasks } = await supabase
+        .from("tasks")
+        .select("id, title, due_date, status")
+        .eq("service_id", prof.service_id)
+        .neq("status", "done")
+        .not("due_date", "is", null)
+        .lte("due_date", in2Str);
+      if (!dueTasks || dueTasks.length === 0) return;
+
+      const { data: existing } = await supabase
+        .from("notifications")
+        .select("task_id")
+        .eq("user_id", prof.id)
+        .gte("created_at", `${todayStr}T00:00:00`);
+      const alreadyNotified = new Set((existing || []).map((n) => n.task_id));
+
+      for (const t of dueTasks) {
+        if (alreadyNotified.has(t.id)) continue;
+        const overdue = t.due_date < todayStr;
+        await supabase.from("notifications").insert({
+          user_id: prof.id,
+          task_id: t.id,
+          title: overdue ? `Tâche en retard : ${t.title}` : `Échéance proche : ${t.title}`,
+          body: overdue ? "Cette tâche a dépassé sa date d'échéance." : "Cette tâche arrive à échéance bientôt.",
+          link: "/dashboard/agenda",
+        });
+      }
     }
 
     load();
@@ -207,9 +248,12 @@ export default function DashboardLayout({ children }) {
               <p className="text-sm text-[#8A857A]">Bonjour,</p>
               <p className="font-medium">{profile.full_name}</p>
             </div>
-            <p className="text-xs uppercase tracking-wide text-[#B8862E]">
-              {isAdmin ? "Super administrateur" : profile.services?.name}
-            </p>
+            <div className="flex items-center gap-4">
+              <NotificationBell userId={profile.id} />
+              <p className="text-xs uppercase tracking-wide text-[#B8862E] hidden sm:block">
+                {isAdmin ? "Super administrateur" : profile.services?.name}
+              </p>
+            </div>
           </div>
           <div key={pathname} className="dash-in p-6 md:p-10 max-w-6xl mx-auto">{children}</div>
         </main>
