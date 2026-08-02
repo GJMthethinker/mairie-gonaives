@@ -1,19 +1,21 @@
 import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || "mailto:contact@mairie-gonaives.ht",
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+export const dynamic = "force-dynamic";
 
 export async function POST(request) {
   try {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || "mailto:contact@mairie-gonaives.ht",
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     const { userId, title, body, link } = await request.json();
     if (!userId || !title) {
       return Response.json({ error: "userId et title requis" }, { status: 400 });
