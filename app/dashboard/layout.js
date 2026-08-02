@@ -25,11 +25,32 @@ export default function DashboardLayout({ children }) {
         router.replace("/login");
         return;
       }
-      const { data: prof } = await supabase
+      let { data: prof } = await supabase
         .from("profiles")
         .select("*, services(name, code)")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
+
+      // Si l'inscription n'a pas pu créer la fiche tout de suite (confirmation email requise), on la crée ici.
+      if (!prof) {
+        const meta = session.user.user_metadata || {};
+        if (meta.full_name) {
+          await supabase.from("profiles").insert({
+            id: session.user.id,
+            full_name: meta.full_name,
+            role: "agent",
+            service_id: meta.service_id || null,
+            status: "en_attente",
+          });
+          const retry = await supabase
+            .from("profiles")
+            .select("*, services(name, code)")
+            .eq("id", session.user.id)
+            .maybeSingle();
+          prof = retry.data;
+        }
+      }
+
       const { data: svcs } = await supabase.from("services").select("*").order("name");
       if (!mounted) return;
       setProfile(prof);
@@ -63,6 +84,27 @@ export default function DashboardLayout({ children }) {
   }
 
   const isAdmin = profile.role === "superadmin";
+
+  if (!isAdmin && profile.status !== "approuve") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F4EC] p-6">
+        <div className="bg-white border border-[#E3DCC8] rounded-sm p-8 max-w-md text-center">
+          <h1 className="font-serif text-xl text-[#1B2A4A] mb-3">
+            {profile.status === "refuse" ? "Compte non autorisé" : "Compte en attente d'approbation"}
+          </h1>
+          <p className="text-sm text-[#5B584F] mb-6">
+            {profile.status === "refuse"
+              ? "Votre demande d'accès a été refusée. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur."
+              : "Un administrateur doit valider votre compte avant que vous puissiez accéder au système. Revenez un peu plus tard."}
+          </p>
+          <button onClick={handleLogout} className="text-sm border border-[#D8D0BC] rounded-sm px-4 py-2">
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const nav = [
     ...(isAdmin ? [{ href: "/dashboard", label: "Tableau de bord" }] : []),
     { href: "/dashboard/documents", label: "Documents" },
@@ -72,6 +114,8 @@ export default function DashboardLayout({ children }) {
     { href: "/dashboard/messages", label: "Messages" },
     { href: "/dashboard/actualites", label: "Actualités" },
     { href: "/dashboard/annonces", label: "Annonces" },
+    { href: "/dashboard/annuaire", label: "Annuaire" },
+    ...(isAdmin ? [{ href: "/dashboard/employes", label: "Employés" }] : []),
   ];
 
   return (
