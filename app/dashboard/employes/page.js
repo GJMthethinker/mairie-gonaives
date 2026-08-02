@@ -14,6 +14,7 @@ export default function EmployesPage() {
   const [grants, setGrants] = useState([]); // {viewer_id, target_id}
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
+  const [notifyTarget, setNotifyTarget] = useState(null);
 
   async function load() {
     const { data: profs } = await supabase
@@ -97,6 +98,12 @@ export default function EmployesPage() {
                     {statusMeta[p.status]?.label}
                   </span>
                   <button
+                    onClick={() => setNotifyTarget(p)}
+                    className="text-xs border border-[#D8D0BC] px-3 py-1.5 rounded-sm"
+                  >
+                    Notifier
+                  </button>
+                  <button
                     onClick={() => setExpanded(isExpanded ? null : p.id)}
                     className="text-xs border border-[#D8D0BC] px-3 py-1.5 rounded-sm"
                   >
@@ -129,6 +136,77 @@ export default function EmployesPage() {
             </div>
           );
         })}
+      </div>
+
+      {notifyTarget && (
+        <NotifyModal target={notifyTarget} onClose={() => setNotifyTarget(null)} />
+      )}
+    </div>
+  );
+}
+
+function NotifyModal({ target, onClose }) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    await supabase.from("notifications").insert({
+      user_id: target.id,
+      title: title.trim(),
+      body: body.trim() || null,
+      created_by: session.user.id,
+    });
+    setSaving(false);
+    setSent(true);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-sm w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-serif text-lg text-[#1B2A4A]">Notifier {target.full_name}</h3>
+          <button onClick={onClose}>✕</button>
+        </div>
+        {sent ? (
+          <div className="text-center py-4">
+            <p className="text-sm text-[#5B584F] mb-4">Notification envoyée.</p>
+            <button onClick={onClose} className="text-sm border border-[#D8D0BC] rounded-sm px-4 py-2">
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            <input
+              required
+              placeholder="Titre"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
+            />
+            <textarea
+              rows={3}
+              placeholder="Message (optionnel)"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full bg-[#1B2A4A] text-white rounded-sm px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+            >
+              {saving ? "Envoi..." : "Envoyer"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
