@@ -55,7 +55,7 @@ export default function MessagesPage() {
         <div className="space-y-3">
           {appointments.length === 0 && <p className="text-sm text-[#8A857A]">Aucune demande de rendez-vous.</p>}
           {appointments.map((a) => (
-            <div key={a.id} className="bg-white border border-[#E3DCC8] rounded-sm p-4">
+            <div key={a.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-4">
               <div className="flex items-center justify-between mb-1">
                 <p className="font-medium text-sm">{a.full_name}</p>
                 <span className="text-[11px] uppercase tracking-wide text-[#B8862E]">{statusLabel[a.status]}</span>
@@ -82,7 +82,7 @@ export default function MessagesPage() {
         <div className="space-y-3">
           {messages.length === 0 && <p className="text-sm text-[#8A857A]">Aucun message.</p>}
           {messages.map((m) => (
-            <div key={m.id} className="bg-white border border-[#E3DCC8] rounded-sm p-4">
+            <div key={m.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-4">
               <div className="flex items-center justify-between mb-1">
                 <p className="font-medium text-sm">{m.full_name || "Anonyme"}</p>
                 <span className="text-[11px] uppercase tracking-wide text-[#B8862E]">{typeLabel[m.type]}</span>
