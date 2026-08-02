@@ -78,6 +78,11 @@ export default function ArchivesPage() {
                 Ouvrir le fichier
               </a>
             )}
+            {a.source === "document" && a.document_id && (
+              <a href={`/dashboard/documents?view=${a.document_id}`} className="text-xs text-[#1B2A4A] underline">
+                Ouvrir le document
+              </a>
+            )}
           </div>
         ))}
         {visible.length === 0 && <p className="text-sm text-[#8A857A]">Aucune archive pour le moment.</p>}
