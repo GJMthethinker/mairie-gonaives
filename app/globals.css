@@ -36,9 +36,22 @@ body {
   animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) both;
 }
 
+.dash-in {
+  animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) both;
+}
+.card-hover {
+  transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px -12px rgba(27,42,74,0.25);
+  border-color: #B8862E;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal.revealed { opacity: 1; transform: none; transition: none; }
-  .float-slow, .hero-in { animation: none !important; }
+  .float-slow, .hero-in, .dash-in { animation: none !important; }
+  .card-hover, .card-hover:hover { transition: none; transform: none; }
 }
 
 @media print {
