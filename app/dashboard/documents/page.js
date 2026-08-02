@@ -29,6 +29,7 @@ export default function DocumentsPage() {
   const [generated, setGenerated] = useState(null);
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [openingArchived, setOpeningArchived] = useState(false);
 
   async function loadTemplates() {
     const { data } = await supabase.from("templates").select("*, services(name, code)").order("name");
@@ -38,6 +39,27 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     loadTemplates();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const viewId = new URLSearchParams(window.location.search).get("view");
+    if (!viewId) return;
+    setOpeningArchived(true);
+    async function openArchivedDocument() {
+      const { data: doc } = await supabase.from("documents").select("*").eq("id", viewId).maybeSingle();
+      if (!doc) {
+        setOpeningArchived(false);
+        return;
+      }
+      const { data: tmpl } = await supabase.from("templates").select("*, services(name, code)").eq("id", doc.template_id).maybeSingle();
+      if (tmpl) {
+        setActiveTemplate(tmpl);
+        setGenerated(doc);
+      }
+      setOpeningArchived(false);
+    }
+    openArchivedDocument();
   }, []);
 
   function openTemplate(t) {
