@@ -107,7 +107,7 @@ export default function TachesPage() {
             </p>
             <div className="space-y-2">
               {sortTasks(scoped.filter((t) => t.status === status)).map((t) => (
-                <div key={t.id} className="bg-white border border-[#E3DCC8] rounded-sm p-3">
+                <div key={t.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-3">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium">{t.title}</p>
                     <span
