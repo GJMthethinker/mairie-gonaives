@@ -97,7 +97,7 @@ export default function DocumentsPage() {
       {!activeTemplate && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {visible.map((t) => (
-            <div key={t.id} className="bg-white border border-[#E3DCC8] hover:border-[#B8862E] rounded-sm p-5">
+            <div key={t.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-5">
               <button onClick={() => openTemplate(t)} className="text-left w-full">
                 <p className="font-medium text-sm">{t.name}</p>
                 <p className="text-xs text-[#8A857A] mt-1">{t.services?.name}</p>
@@ -217,7 +217,7 @@ function DocumentPreview({ template, doc }) {
       <div className="flex items-start justify-between shrink-0">
         <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
         <div className="text-center flex-1 px-2">
-          <img src="/palmiste.jpg" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
+          <img src="/palmiste.jpg.jpg" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
           <p className="italic text-sm mt-1">Liberté • Égalité • Fraternité</p>
           <p className="font-bold text-lg mt-1">RÉPUBLIQUE D'HAÏTI</p>
           <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
