@@ -14,6 +14,10 @@ function useReveal() {
     const el = ref.current;
     if (!el) return;
     const children = el.querySelectorAll(".reveal");
+    if (!("IntersectionObserver" in window)) {
+      children.forEach((c) => c.classList.add("revealed"));
+      return;
+    }
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -29,7 +33,14 @@ function useReveal() {
       child.style.transitionDelay = `${Math.min(i, 6) * 80}ms`;
       observer.observe(child);
     });
-    return () => observer.disconnect();
+    // Sécurité : si l'animation ne s'est jamais déclenchée (appareil/navigateur particulier), on force l'affichage
+    const fallback = setTimeout(() => {
+      children.forEach((c) => c.classList.add("revealed"));
+    }, 1200);
+    return () => {
+      observer.disconnect();
+      clearTimeout(fallback);
+    };
   }, []);
   return ref;
 }
