@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { triggerPush } from "@/lib/push";
 import { useApp } from "../layout";
 
 function frDateTime(iso) {
@@ -114,14 +115,19 @@ function NewAnnouncementModal({ services, onClose, onSaved }) {
     }
     const { data: recipients } = await recipientsQuery;
     if (recipients && recipients.length > 0) {
+      const notifTitle = `Nouvelle annonce : ${title.trim()}`;
+      const notifBody = content.trim().slice(0, 120);
       await supabase.from("notifications").insert(
         recipients.map((r) => ({
           user_id: r.id,
-          title: `Nouvelle annonce : ${title.trim()}`,
-          body: content.trim().slice(0, 120),
+          title: notifTitle,
+          body: notifBody,
           link: "/dashboard/annonces",
           created_by: session.user.id,
         }))
+      );
+      recipients.forEach((r) =>
+        triggerPush({ userId: r.id, title: notifTitle, body: notifBody, link: "/dashboard/annonces" })
       );
     }
 
