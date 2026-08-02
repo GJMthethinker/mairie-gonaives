@@ -16,6 +16,11 @@ function frDate(iso) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+function findValueByLabel(fields, values, patterns) {
+  const field = fields.find((f) => patterns.some((p) => f.label.toLowerCase().includes(p)));
+  return field ? values[field.key] : null;
+}
+
 export default function DocumentsPage() {
   const { profile, services, isAdmin } = useApp();
   const [templates, setTemplates] = useState([]);
@@ -68,6 +73,36 @@ export default function DocumentsPage() {
       return;
     }
     setGenerated(inserted);
+
+    // Archivage automatique du document généré
+    await supabase.from("archives").insert({
+      service_id: activeTemplate.service_id,
+      title: `${activeTemplate.name} — ${docNumber}`,
+      description: `Document généré automatiquement`,
+      source: "document",
+      document_id: inserted.id,
+      created_by: profile.id,
+    });
+
+    // Si le document est un certificat de résidence, on alimente le registre des résidents
+    if (activeTemplate.name.toLowerCase().includes("résidence")) {
+      const fullName = findValueByLabel(activeTemplate.fields, values, ["nom complet", "nom"]);
+      const address = findValueByLabel(activeTemplate.fields, values, ["adresse"]);
+      const phone = findValueByLabel(activeTemplate.fields, values, ["téléphone", "telephone"]);
+      const birthDate = findValueByLabel(activeTemplate.fields, values, ["date de naissance"]);
+      const birthPlace = findValueByLabel(activeTemplate.fields, values, ["lieu de naissance"]);
+      if (fullName) {
+        await supabase.from("residents").insert({
+          full_name: fullName,
+          address,
+          phone,
+          birth_date: birthDate,
+          birth_place: birthPlace,
+          document_id: inserted.id,
+          service_id: activeTemplate.service_id,
+        });
+      }
+    }
   }
 
   async function handleDeleteTemplate(id) {
