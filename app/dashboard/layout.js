@@ -161,6 +161,8 @@ export default function DashboardLayout({ children }) {
     ...(isAdmin ? [{ href: "/dashboard", label: "Tableau de bord" }] : []),
     { href: "/dashboard/documents", label: "Documents" },
     { href: "/dashboard/registre", label: "Registre" },
+    { href: "/dashboard/archives", label: "Archives" },
+    { href: "/dashboard/residents", label: "Résidents" },
     { href: "/dashboard/taches", label: "Tâches" },
     { href: "/dashboard/agenda", label: "Agenda" },
     { href: "/dashboard/messages", label: "Messages" },
