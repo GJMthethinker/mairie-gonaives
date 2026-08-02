@@ -8,12 +8,13 @@ function frDate(iso) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function useReveal() {
+function useReveal(deps = []) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const children = el.querySelectorAll(".reveal");
+    if (children.length === 0) return;
     if (!("IntersectionObserver" in window)) {
       children.forEach((c) => c.classList.add("revealed"));
       return;
@@ -41,7 +42,8 @@ function useReveal() {
       observer.disconnect();
       clearTimeout(fallback);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
   return ref;
 }
 
@@ -68,7 +70,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [activeForm, setActiveForm] = useState(null); // 'rdv' | 'doleance' | 'suggestion' | 'engagement'
   const [mounted, setMounted] = useState(false);
-  const newsRef = useReveal();
+  const newsRef = useReveal([loading, news.length]);
   const galleryRef = useReveal();
   const actionsRef = useReveal();
 
@@ -143,7 +145,7 @@ export default function HomePage() {
       <main className="max-w-5xl mx-auto px-6 py-16 space-y-20">
         {/* Galerie */}
         <section ref={galleryRef}>
-          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">La Mairie en action</h2>
+          <h2 className="stagger-in font-serif text-2xl text-[#1B2A4A] mb-6">La Mairie en action</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               { src: "/mairie-facade.jpg", alt: "L'Hôtel de Ville des Gonaïves" },
@@ -151,7 +153,7 @@ export default function HomePage() {
               { src: "/mairie-mairesse.jpg", alt: "La Mairesse Gina Jeanty" },
               { src: "/mairie-equipe.jpg", alt: "L'équipe de la Mairie en initiative" },
             ].map((img, i) => (
-              <div key={i} className="reveal overflow-hidden rounded-sm border border-[#E3DCC8] aspect-[4/5] group">
+              <div key={i} className="stagger-in overflow-hidden rounded-sm border border-[#E3DCC8] aspect-[4/5] group">
                 <img
                   src={img.src}
                   alt={img.alt}
@@ -164,17 +166,17 @@ export default function HomePage() {
 
         {/* Actualités */}
         <section ref={newsRef}>
-          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">Actualités</h2>
+          <h2 className="stagger-in font-serif text-2xl text-[#1B2A4A] mb-6">Actualités</h2>
           {loading ? (
             <p className="text-sm text-[#8A857A]">Chargement…</p>
           ) : news.length === 0 ? (
-            <p className="reveal text-sm text-[#8A857A]">Aucune actualité publiée pour le moment.</p>
+            <p className="stagger-in text-sm text-[#8A857A]">Aucune actualité publiée pour le moment.</p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
               {news.map((n) => (
                 <div
                   key={n.id}
-                  className="reveal bg-white border border-[#E3DCC8] rounded-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
+                  className="stagger-in bg-white border border-[#E3DCC8] rounded-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
                 >
                   {n.image_url && (
                     <img src={n.image_url} alt={n.title} className="w-full h-44 object-cover" />
@@ -192,11 +194,11 @@ export default function HomePage() {
 
         {/* Actions visiteurs */}
         <section ref={actionsRef}>
-          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">Nous contacter</h2>
+          <h2 className="stagger-in font-serif text-2xl text-[#1B2A4A] mb-6">Nous contacter</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             <button
               onClick={() => setActiveForm("rdv")}
-              className="reveal text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
+              className="stagger-in text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
             >
               <CalendarIcon />
               <p className="font-medium text-sm mt-3">Prendre rendez-vous</p>
@@ -204,7 +206,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveForm("doleance")}
-              className="reveal text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
+              className="stagger-in text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
             >
               <MessageIcon />
               <p className="font-medium text-sm mt-3">Laisser un message</p>
@@ -212,7 +214,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveForm("engagement")}
-              className="reveal text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
+              className="stagger-in text-left bg-white border border-[#E3DCC8] rounded-sm p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8862E]"
             >
               <HeartIcon />
               <p className="font-medium text-sm mt-3">Proposer mon aide</p>
