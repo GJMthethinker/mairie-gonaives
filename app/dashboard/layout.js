@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [services, setServices] = useState([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -71,6 +72,10 @@ export default function DashboardLayout({ children }) {
     };
   }, [router]);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -122,17 +127,53 @@ export default function DashboardLayout({ children }) {
   return (
     <AppContext.Provider value={{ profile, services, isAdmin }}>
       <div className="min-h-screen bg-[#F7F4EC] text-[#242220] flex">
-        <aside className="w-60 shrink-0 bg-[#1B2A4A] text-[#E9E4D6] hidden md:flex flex-col">
-          <div className="p-5 flex items-center gap-3 border-b border-white/10">
-            <div className="w-9 h-9 rounded-full border-2 border-[#B8862E] text-[#B8862E] flex items-center justify-center font-serif text-xs shrink-0">
+        {/* Barre mobile avec bouton menu */}
+        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#1B2A4A] text-white flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full border-2 border-[#B8862E] text-[#B8862E] flex items-center justify-center font-serif text-xs shrink-0">
               MG
             </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-[#B8862E]">Gonaïves</p>
-              <p className="font-serif text-sm leading-tight">Mairie</p>
-            </div>
+            <p className="font-serif text-sm">Mairie des Gonaïves</p>
           </div>
-          <nav className="flex-1 p-3 space-y-1">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Ouvrir le menu"
+            className="p-2 -mr-2"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Fond assombri quand le menu mobile est ouvert */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+        <aside
+          className={`fixed md:static inset-y-0 left-0 z-50 w-64 shrink-0 bg-[#1B2A4A] text-[#E9E4D6] flex flex-col transform transition-transform duration-300 ${
+            mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } md:translate-x-0`}
+        >
+          <div className="p-5 flex items-center justify-between gap-3 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full border-2 border-[#B8862E] text-[#B8862E] flex items-center justify-center font-serif text-xs shrink-0">
+                MG
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-[#B8862E]">Gonaïves</p>
+                <p className="font-serif text-sm leading-tight">Mairie</p>
+              </div>
+            </div>
+            <button onClick={() => setMobileMenuOpen(false)} className="md:hidden p-1 text-[#B9B4A3]" aria-label="Fermer le menu">
+              ✕
+            </button>
+          </div>
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {nav.map((it) => (
               <a
                 key={it.href}
@@ -160,7 +201,7 @@ export default function DashboardLayout({ children }) {
             </button>
           </div>
         </aside>
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 pt-14 md:pt-0">
           <div className="border-b border-[#E3DCC8] bg-[#FBF9F2] px-6 md:px-10 py-4 flex items-center justify-between">
             <div>
               <p className="text-sm text-[#8A857A]">Bonjour,</p>
