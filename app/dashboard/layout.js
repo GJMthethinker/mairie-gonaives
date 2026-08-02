@@ -91,21 +91,24 @@ export default function DashboardLayout({ children }) {
               <a
                 key={it.href}
                 href={it.href}
-                className={`block px-3 py-2.5 rounded-sm text-sm ${
-                  pathname === it.href ? "bg-white/10 text-white" : "text-[#B9B4A3] hover:bg-white/5"
+                className={`relative block px-3 py-2.5 rounded-sm text-sm transition-all duration-200 ${
+                  pathname === it.href ? "bg-white/10 text-white" : "text-[#B9B4A3] hover:bg-white/5 hover:text-white hover:pl-4"
                 }`}
               >
+                {pathname === it.href && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 bg-[#B8862E] rounded-full" />
+                )}
                 {it.label}
               </a>
             ))}
           </nav>
           <div className="p-3 border-t border-white/10">
-            <a href="/" className="block px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 rounded-sm">
+            <a href="/" className="block px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 hover:text-white rounded-sm transition-colors duration-200">
               ← Site public
             </a>
             <button
               onClick={handleLogout}
-              className="w-full text-left px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 rounded-sm"
+              className="w-full text-left px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 hover:text-white rounded-sm transition-colors duration-200"
             >
               Se déconnecter
             </button>
@@ -121,7 +124,7 @@ export default function DashboardLayout({ children }) {
               {isAdmin ? "Super administrateur" : profile.services?.name}
             </p>
           </div>
-          <div className="p-6 md:p-10 max-w-6xl mx-auto">{children}</div>
+          <div key={pathname} className="dash-in p-6 md:p-10 max-w-6xl mx-auto">{children}</div>
         </main>
       </div>
     </AppContext.Provider>
