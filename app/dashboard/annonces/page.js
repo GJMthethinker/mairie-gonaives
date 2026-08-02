@@ -48,8 +48,8 @@ export default function AnnoncesPage() {
 
       <div className="space-y-3">
         {announcements.length === 0 && <p className="text-sm text-[#8A857A]">Aucune annonce pour le moment.</p>}
-        {announcements.map((a) => (
-          <div key={a.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-5">
+        {announcements.map((a, i) => (
+          <div key={a.id} className="card-hover stagger-in bg-white border border-[#E3DCC8] rounded-sm p-5" style={{ animationDelay: `${i * 60}ms` }}>
             <div className="flex items-start justify-between gap-3 mb-2">
               <p className="font-medium">{a.title}</p>
               <button onClick={() => remove(a.id)} className="text-[11px] text-[#A8332B] shrink-0">Supprimer</button>
@@ -101,11 +101,31 @@ function NewAnnouncementModal({ services, onClose, onSaved }) {
       service_ids: visibility === "services" ? selectedServices : [],
       created_by: session.user.id,
     });
-    setSaving(false);
     if (error) {
+      setSaving(false);
       alert("Erreur : " + error.message);
       return;
     }
+
+    // Notifier les destinataires concernés
+    let recipientsQuery = supabase.from("profiles").select("id").eq("status", "approuve").neq("id", session.user.id);
+    if (visibility === "services" && selectedServices.length > 0) {
+      recipientsQuery = recipientsQuery.in("service_id", selectedServices);
+    }
+    const { data: recipients } = await recipientsQuery;
+    if (recipients && recipients.length > 0) {
+      await supabase.from("notifications").insert(
+        recipients.map((r) => ({
+          user_id: r.id,
+          title: `Nouvelle annonce : ${title.trim()}`,
+          body: content.trim().slice(0, 120),
+          link: "/dashboard/annonces",
+          created_by: session.user.id,
+        }))
+      );
+    }
+
+    setSaving(false);
     onSaved();
   }
 
