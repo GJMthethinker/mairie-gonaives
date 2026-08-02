@@ -40,6 +40,7 @@ export default function DashboardLayout({ children }) {
             full_name: meta.full_name,
             role: "agent",
             service_id: meta.service_id || null,
+            phone: meta.phone || null,
             status: "en_attente",
           });
           const retry = await supabase
