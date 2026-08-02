@@ -58,6 +58,7 @@ export default function HomePage() {
   const [activeForm, setActiveForm] = useState(null); // 'rdv' | 'doleance' | 'suggestion' | 'engagement'
   const [mounted, setMounted] = useState(false);
   const newsRef = useReveal();
+  const galleryRef = useReveal();
   const actionsRef = useReveal();
 
   useEffect(() => {
@@ -93,12 +94,18 @@ export default function HomePage() {
       </header>
 
       {/* Héros */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#0E1A30] via-[#152443] to-[#1B2A4A] text-[#E9E4D6] py-20 px-6 text-center">
+      <section className="relative overflow-hidden text-[#E9E4D6] py-24 px-6 text-center">
+        <div
+          className="absolute inset-0 bg-cover bg-center scale-105"
+          style={{ backgroundImage: "url('/mairie-aerienne.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0E1A30]/95 via-[#152443]/90 to-[#1B2A4A]/95" aria-hidden="true" />
         <img
           src="/palmiste.jpg"
           alt=""
           aria-hidden="true"
-          className="float-slow pointer-events-none select-none absolute -right-16 -top-10 w-[340px] opacity-[0.09] md:w-[420px]"
+          className="float-slow pointer-events-none select-none absolute -right-14 -top-8 w-[260px] opacity-[0.12] md:w-[320px]"
         />
         <div className="relative">
           {mounted && (
@@ -123,6 +130,27 @@ export default function HomePage() {
       </section>
 
       <main className="max-w-5xl mx-auto px-6 py-16 space-y-20">
+        {/* Galerie */}
+        <section ref={galleryRef}>
+          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">La Mairie en action</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { src: "/mairie-facade.jpg", alt: "L'Hôtel de Ville des Gonaïves" },
+              { src: "/mairie-direction.jpg", alt: "La direction municipale" },
+              { src: "/mairie-mairesse.jpg", alt: "La Mairesse Gina Jeanty" },
+              { src: "/mairie-equipe.jpg", alt: "L'équipe de la Mairie en initiative" },
+            ].map((img, i) => (
+              <div key={i} className="reveal overflow-hidden rounded-sm border border-[#E3DCC8] aspect-[4/5] group">
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Actualités */}
         <section ref={newsRef}>
           <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">Actualités</h2>
@@ -144,6 +172,32 @@ export default function HomePage() {
               ))}
             </div>
           )}
+        </section>
+
+        {/* Galerie */}
+        <section ref={galleryRef}>
+          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">La mairie en images</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { src: "/gallery/gallery-1.jpg", alt: "Équipe de la Mairie des Gonaïves" },
+              { src: "/gallery/gallery-2.jpg", alt: "Cérémonie officielle à la mairie" },
+              { src: "/gallery/gallery-3.jpg", alt: "La Mairesse lors d'un événement" },
+              { src: "/gallery/gallery-4.jpg", alt: "Vue aérienne des Gonaïves" },
+              { src: "/gallery/gallery-5.jpg", alt: "Conseil municipal des Gonaïves" },
+            ].map((img, i) => (
+              <div
+                key={img.src}
+                className={`reveal overflow-hidden rounded-sm border border-[#E3DCC8] ${i === 3 ? "col-span-2 row-span-2" : ""}`}
+              >
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                  style={{ aspectRatio: i === 3 ? "1/1" : "4/3" }}
+                />
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Actions visiteurs */}
