@@ -9,6 +9,7 @@ export default function InscriptionPage() {
   const [services, setServices] = useState([]);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [error, setError] = useState("");
@@ -30,7 +31,7 @@ export default function InscriptionPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, service_id: serviceId } },
+      options: { data: { full_name: fullName, service_id: serviceId, phone } },
     });
 
     if (signUpError) {
@@ -46,6 +47,7 @@ export default function InscriptionPage() {
         full_name: fullName,
         role: "agent",
         service_id: serviceId,
+        phone,
         status: "en_attente",
       });
     }
@@ -60,8 +62,8 @@ export default function InscriptionPage() {
         <div className="bg-[#F7F4EC] rounded-sm shadow-2xl w-full max-w-md p-8 text-center">
           <h1 className="font-serif text-xl text-[#1B2A4A] mb-3">Compte créé</h1>
           <p className="text-sm text-[#5B584F] mb-6">
-            Votre demande a été enregistrée. Si une confirmation par email vous a été envoyée, vérifiez votre boîte
-            mail. Un administrateur doit approuver votre compte avant que vous puissiez accéder au système.
+            Votre demande a été enregistrée. Un administrateur doit approuver votre compte avant que vous puissiez
+            accéder au système.
           </p>
           <a href="/login" className="text-sm text-[#1B2A4A] font-medium underline">
             Retour à la connexion
@@ -114,6 +116,17 @@ export default function InscriptionPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="w-full border border-[#D8D0BC] bg-white rounded-sm px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">Numéro de téléphone</label>
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ex : 3712-3456"
               className="w-full border border-[#D8D0BC] bg-white rounded-sm px-3 py-2"
             />
           </div>
