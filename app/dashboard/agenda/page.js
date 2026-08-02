@@ -95,7 +95,7 @@ export default function AgendaPage() {
 
 function TaskRow({ t }) {
   return (
-    <div className="bg-white border border-[#E3DCC8] rounded-sm p-3 flex items-center justify-between gap-3">
+    <div className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-3 flex items-center justify-between gap-3">
       <div>
         <p className="text-sm font-medium">{t.title}</p>
         {t.description && <p className="text-xs text-[#8A857A] mt-0.5">{t.description}</p>}
