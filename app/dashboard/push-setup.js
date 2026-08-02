@@ -1,271 +1,105 @@
 "use client";
 
-import { useEffect, useState, createContext, useContext } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { triggerPush } from "@/lib/push";
-import NotificationBell from "./notification-bell";
-import PushSetup from "./push-setup";
 
-const AppContext = createContext(null);
-export function useApp() {
-  return useContext(AppContext);
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-export default function DashboardLayout({ children }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
-  const [services, setServices] = useState([]);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+function isIos() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+export default function PushSetup({ userId }) {
+  const [status, setStatus] = useState("checking"); // checking | unsupported | ios-need-install | can-enable | enabled | denied
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    let mounted = true;
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      setStatus("unsupported");
+      return;
+    }
+    if (isIos() && !isStandalone()) {
+      setStatus("ios-need-install");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      checkExistingSubscription();
+    } else if (Notification.permission === "denied") {
+      setStatus("denied");
+    } else {
+      setStatus("can-enable");
+    }
+  }, []);
 
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.replace("/login");
+  async function checkExistingSubscription() {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const sub = await reg.pushManager.getSubscription();
+    setStatus(sub ? "enabled" : "can-enable");
+  }
+
+  async function enable() {
+    setError("");
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setStatus(permission === "denied" ? "denied" : "can-enable");
         return;
       }
-      let { data: prof } = await supabase
-        .from("profiles")
-        .select("*, services(name, code)")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      // Si l'inscription n'a pas pu créer la fiche tout de suite (confirmation email requise), on la crée ici.
-      if (!prof) {
-        const meta = session.user.user_metadata || {};
-        if (meta.full_name) {
-          await supabase.from("profiles").insert({
-            id: session.user.id,
-            full_name: meta.full_name,
-            role: "agent",
-            service_id: meta.service_id || null,
-            phone: meta.phone || null,
-            status: "en_attente",
-          });
-          const retry = await supabase
-            .from("profiles")
-            .select("*, services(name, code)")
-            .eq("id", session.user.id)
-            .maybeSingle();
-          prof = retry.data;
-        }
-      }
-
-      const { data: svcs } = await supabase.from("services").select("*").order("name");
-      if (!mounted) return;
-      setProfile(prof);
-      setServices(svcs || []);
-      setLoading(false);
-
-      if (prof && prof.status === "approuve" && prof.role !== "superadmin" && prof.service_id) {
-        generateTaskReminders(prof);
-      }
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+      });
+      const json = sub.toJSON();
+      await supabase.from("push_subscriptions").upsert(
+        {
+          user_id: userId,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+        },
+        { onConflict: "endpoint" }
+      );
+      setStatus("enabled");
+    } catch (e) {
+      setError(e.message);
     }
-
-    async function generateTaskReminders(prof) {
-      const today = new Date();
-      const in2days = new Date();
-      in2days.setDate(today.getDate() + 2);
-      const todayStr = today.toISOString().slice(0, 10);
-      const in2Str = in2days.toISOString().slice(0, 10);
-
-      const { data: dueTasks } = await supabase
-        .from("tasks")
-        .select("id, title, due_date, status")
-        .eq("service_id", prof.service_id)
-        .neq("status", "done")
-        .not("due_date", "is", null)
-        .lte("due_date", in2Str);
-      if (!dueTasks || dueTasks.length === 0) return;
-
-      const { data: existing } = await supabase
-        .from("notifications")
-        .select("task_id")
-        .eq("user_id", prof.id)
-        .gte("created_at", `${todayStr}T00:00:00`);
-      const alreadyNotified = new Set((existing || []).map((n) => n.task_id));
-
-      for (const t of dueTasks) {
-        if (alreadyNotified.has(t.id)) continue;
-        const overdue = t.due_date < todayStr;
-        const title = overdue ? `Tâche en retard : ${t.title}` : `Échéance proche : ${t.title}`;
-        const body = overdue ? "Cette tâche a dépassé sa date d'échéance." : "Cette tâche arrive à échéance bientôt.";
-        await supabase.from("notifications").insert({
-          user_id: prof.id,
-          task_id: t.id,
-          title,
-          body,
-          link: "/dashboard/agenda",
-        });
-        triggerPush({ userId: prof.id, title, body, link: "/dashboard/agenda" });
-      }
-    }
-
-    load();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") router.replace("/login");
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, [router]);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/login");
   }
 
-  if (loading || !profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F4EC]">
-        <p className="text-[#8A857A] text-sm">Chargement…</p>
-      </div>
-    );
-  }
-
-  const isAdmin = profile.role === "superadmin";
-
-  if (!isAdmin && profile.status !== "approuve") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F4EC] p-6">
-        <div className="bg-white border border-[#E3DCC8] rounded-sm p-8 max-w-md text-center">
-          <h1 className="font-serif text-xl text-[#1B2A4A] mb-3">
-            {profile.status === "refuse" ? "Compte non autorisé" : "Compte en attente d'approbation"}
-          </h1>
-          <p className="text-sm text-[#5B584F] mb-6">
-            {profile.status === "refuse"
-              ? "Votre demande d'accès a été refusée. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur."
-              : "Un administrateur doit valider votre compte avant que vous puissiez accéder au système. Revenez un peu plus tard."}
-          </p>
-          <button onClick={handleLogout} className="text-sm border border-[#D8D0BC] rounded-sm px-4 py-2">
-            Se déconnecter
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const nav = [
-    ...(isAdmin ? [{ href: "/dashboard", label: "Tableau de bord" }] : []),
-    { href: "/dashboard/documents", label: "Documents" },
-    { href: "/dashboard/registre", label: "Registre" },
-    { href: "/dashboard/taches", label: "Tâches" },
-    { href: "/dashboard/agenda", label: "Agenda" },
-    { href: "/dashboard/messages", label: "Messages" },
-    { href: "/dashboard/actualites", label: "Actualités" },
-    { href: "/dashboard/annonces", label: "Annonces" },
-    { href: "/dashboard/annuaire", label: "Annuaire" },
-    ...(isAdmin ? [{ href: "/dashboard/employes", label: "Employés" }] : []),
-  ];
+  if (status === "checking" || status === "unsupported" || status === "enabled") return null;
 
   return (
-    <AppContext.Provider value={{ profile, services, isAdmin }}>
-      <div className="min-h-screen bg-[#F7F4EC] text-[#242220] flex">
-        {/* Barre mobile avec bouton menu */}
-        <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#1B2A4A] text-white flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full border-2 border-[#B8862E] text-[#B8862E] flex items-center justify-center font-serif text-xs shrink-0">
-              MG
-            </div>
-            <p className="font-serif text-sm">Mairie des Gonaïves</p>
-          </div>
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Ouvrir le menu"
-            className="p-2 -mr-2"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
+    <div className="bg-[#FBF3E4] border border-[#E3C896] rounded-sm px-4 py-3 mb-6 flex items-center justify-between gap-3 flex-wrap">
+      {status === "ios-need-install" && (
+        <p className="text-xs text-[#5B584F]">
+          Pour recevoir les notifications sur iPhone : appuyez sur <strong>Partager</strong> puis{" "}
+          <strong>Sur l'écran d'accueil</strong>, ouvrez ensuite l'app depuis l'écran d'accueil.
+        </p>
+      )}
+      {status === "can-enable" && (
+        <>
+          <p className="text-xs text-[#5B584F]">Activez les notifications pour ne rien manquer.</p>
+          <button onClick={enable} className="text-xs bg-[#1B2A4A] text-white px-3 py-1.5 rounded-sm shrink-0">
+            Activer les notifications
           </button>
-        </div>
-
-        {/* Fond assombri quand le menu mobile est ouvert */}
-        {mobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black/40 z-40 md:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-        )}
-
-        <aside
-          className={`fixed md:static inset-y-0 left-0 z-50 w-64 shrink-0 bg-[#1B2A4A] text-[#E9E4D6] flex flex-col transform transition-transform duration-300 ${
-            mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0`}
-        >
-          <div className="p-5 flex items-center justify-between gap-3 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full border-2 border-[#B8862E] text-[#B8862E] flex items-center justify-center font-serif text-xs shrink-0">
-                MG
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#B8862E]">Gonaïves</p>
-                <p className="font-serif text-sm leading-tight">Mairie</p>
-              </div>
-            </div>
-            <button onClick={() => setMobileMenuOpen(false)} className="md:hidden p-1 text-[#B9B4A3]" aria-label="Fermer le menu">
-              ✕
-            </button>
-          </div>
-          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-            {nav.map((it) => (
-              <a
-                key={it.href}
-                href={it.href}
-                className={`relative block px-3 py-2.5 rounded-sm text-sm transition-all duration-200 ${
-                  pathname === it.href ? "bg-white/10 text-white" : "text-[#B9B4A3] hover:bg-white/5 hover:text-white hover:pl-4"
-                }`}
-              >
-                {pathname === it.href && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 bg-[#B8862E] rounded-full" />
-                )}
-                {it.label}
-              </a>
-            ))}
-          </nav>
-          <div className="p-3 border-t border-white/10">
-            <a href="/" className="block px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 hover:text-white rounded-sm transition-colors duration-200">
-              ← Site public
-            </a>
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-3 py-2.5 text-sm text-[#B9B4A3] hover:bg-white/5 hover:text-white rounded-sm transition-colors duration-200"
-            >
-              Se déconnecter
-            </button>
-          </div>
-        </aside>
-        <main className="flex-1 min-w-0 pt-14 md:pt-0">
-          <div className="border-b border-[#E3DCC8] bg-[#FBF9F2] px-6 md:px-10 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-[#8A857A]">Bonjour,</p>
-              <p className="font-medium">{profile.full_name}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <NotificationBell userId={profile.id} />
-              <p className="text-xs uppercase tracking-wide text-[#B8862E] hidden sm:block">
-                {isAdmin ? "Super administrateur" : profile.services?.name}
-              </p>
-            </div>
-          </div>
-          <div key={pathname} className="dash-in p-6 md:p-10 max-w-6xl mx-auto">
-            <PushSetup userId={profile.id} />
-            {children}
-          </div>
-        </main>
-      </div>
-    </AppContext.Provider>
+        </>
+      )}
+      {status === "denied" && (
+        <p className="text-xs text-[#5B584F]">
+          Les notifications sont bloquées dans les réglages de votre navigateur pour ce site.
+        </p>
+      )}
+      {error && <p className="text-xs text-[#A8332B]">{error}</p>}
+    </div>
   );
 }
