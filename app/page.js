@@ -174,32 +174,6 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* Galerie */}
-        <section ref={galleryRef}>
-          <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">La mairie en images</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[
-              { src: "/gallery/gallery-1.jpg", alt: "Équipe de la Mairie des Gonaïves" },
-              { src: "/gallery/gallery-2.jpg", alt: "Cérémonie officielle à la mairie" },
-              { src: "/gallery/gallery-3.jpg", alt: "La Mairesse lors d'un événement" },
-              { src: "/gallery/gallery-4.jpg", alt: "Vue aérienne des Gonaïves" },
-              { src: "/gallery/gallery-5.jpg", alt: "Conseil municipal des Gonaïves" },
-            ].map((img, i) => (
-              <div
-                key={img.src}
-                className={`reveal overflow-hidden rounded-sm border border-[#E3DCC8] ${i === 3 ? "col-span-2 row-span-2" : ""}`}
-              >
-                <img
-                  src={img.src}
-                  alt={img.alt}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                  style={{ aspectRatio: i === 3 ? "1/1" : "4/3" }}
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Actions visiteurs */}
         <section ref={actionsRef}>
           <h2 className="reveal font-serif text-2xl text-[#1B2A4A] mb-6">Nous contacter</h2>
