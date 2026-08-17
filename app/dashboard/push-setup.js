@@ -20,17 +20,34 @@ function isStandalone() {
 export default function PushSetup({ userId }) {
   // checking | unsupported | ios-need-install | can-enable | enabled | denied
   const [status, setStatus] = useState("checking");
+  const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !userId) return;
-    evaluate();
+    if (typeof window === "undefined") return;
+    const timeout = setTimeout(() => {
+      setStatus((s) => (s === "checking" ? "unsupported" : s));
+      setReason((r) => r || "délai dépassé pendant la vérification");
+    }, 4000);
+    if (userId) evaluate();
+    return () => clearTimeout(timeout);
   }, [userId]);
 
   async function evaluate() {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    if (!("serviceWorker" in navigator)) {
       setStatus("unsupported");
+      setReason("serviceWorker non pris en charge par ce navigateur");
+      return;
+    }
+    if (!("PushManager" in window)) {
+      setStatus("unsupported");
+      setReason("PushManager non pris en charge par ce navigateur");
+      return;
+    }
+    if (!("Notification" in window)) {
+      setStatus("unsupported");
+      setReason("Notification non prise en charge par ce navigateur");
       return;
     }
     if (isIos() && !isStandalone()) {
@@ -45,9 +62,6 @@ export default function PushSetup({ userId }) {
       setStatus("can-enable");
       return;
     }
-    // Permission accordée au niveau du navigateur : on vérifie que l'abonnement
-    // actuel de cet appareil appartient bien à CE compte précis (et pas à un
-    // autre utilisateur qui se serait connecté avant sur le même appareil).
     try {
       const reg = await navigator.serviceWorker.register("/sw.js");
       const sub = await reg.pushManager.getSubscription();
@@ -55,15 +69,21 @@ export default function PushSetup({ userId }) {
         setStatus("can-enable");
         return;
       }
-      const { data } = await supabase
+      const { data, error: qErr } = await supabase
         .from("push_subscriptions")
         .select("endpoint")
         .eq("user_id", userId)
         .eq("endpoint", sub.endpoint)
         .maybeSingle();
+      if (qErr) {
+        setStatus("can-enable");
+        setReason("vérification base de données : " + qErr.message);
+        return;
+      }
       setStatus(data ? "enabled" : "can-enable");
-    } catch {
+    } catch (e) {
       setStatus("can-enable");
+      setReason("erreur d'enregistrement : " + e.message);
     }
   }
 
@@ -121,7 +141,7 @@ export default function PushSetup({ userId }) {
     setBusy(false);
   }
 
-  if (status === "checking" || status === "unsupported") return null;
+  if (status === "checking") return null;
 
   if (status === "enabled") {
     return (
@@ -140,6 +160,11 @@ export default function PushSetup({ userId }) {
 
   return (
     <div className="bg-[#FBF3E4] border border-[#E3C896] rounded-sm px-4 py-3 mb-6 flex items-center justify-between gap-3 flex-wrap">
+      {status === "unsupported" && (
+        <p className="text-xs text-[#5B584F]">
+          Les notifications ne sont pas disponibles sur cet appareil/navigateur{reason ? ` (${reason})` : ""}.
+        </p>
+      )}
       {status === "ios-need-install" && (
         <p className="text-xs text-[#5B584F]">
           Pour recevoir les notifications sur iPhone : appuyez sur <strong>Partager</strong> puis{" "}
@@ -148,7 +173,10 @@ export default function PushSetup({ userId }) {
       )}
       {status === "can-enable" && (
         <>
-          <p className="text-xs text-[#5B584F]">Activez les notifications pour ne rien manquer, sur cet appareil.</p>
+          <p className="text-xs text-[#5B584F]">
+            Activez les notifications pour ne rien manquer, sur cet appareil.
+            {reason && <span className="block text-[#B8862E] mt-0.5">({reason})</span>}
+          </p>
           <button
             onClick={enable}
             disabled={busy}
