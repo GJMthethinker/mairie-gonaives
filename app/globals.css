@@ -2,27 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: #f7f4ec;
-  color: #242220;
+/* ===================================================================
+   IDENTITÉ VISUELLE OFFICIELLE — Mairie des Gonaïves
+   Couleurs extraites directement de l'écusson officiel.
+   =================================================================== */
+:root {
+  /* Or / Jaune — couleur dominante */
+  --gold-50: #FFFDE6;
+  --gold-100: #FFF9D6;
+  --gold-200: #FDF781;
+  --gold-400: #F5E600; /* or plein — boutons, accents dominants */
+  --gold-600: #C9BB00;
+  --gold-900: #8A7F00; /* encre or — texte sur fond clair */
+
+  /* Vert — couleur secondaire de l'écusson */
+  --green-50: #E8F5EC;
+  --green-200: #B7E0C6;
+  --green-600: #0B6B3A;
+  --green-900: #034E28; /* vert profond de l'écusson */
+
+  /* Neutres */
+  --cream: #FFFDF6;
+  --ink: #1A1A14;
+  --ink-muted: #6B6B5E;
+  --line: #E9E2C8;
+  --white: #FFFFFF;
 }
 
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+h1, h2, h3, .font-display {
+  font-family: "Playfair Display", Georgia, serif;
+}
+
+/* ===================================================================
+   ANIMATIONS
+   =================================================================== */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(18px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes floatSlow {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50% { transform: translateY(-10px) rotate(-2deg); }
+  50% { transform: translateY(-12px) rotate(-2deg); }
 }
 @keyframes drawLine {
   from { width: 0; }
   to { width: 100%; }
 }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes lightboxIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 230, 0, 0.35); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 230, 0, 0); }
+}
 
 .reveal {
   opacity: 0;
-  transform: translateY(18px);
+  transform: translateY(20px);
   transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
 }
 .reveal.revealed {
@@ -35,47 +86,100 @@ body {
 .hero-in {
   animation: fadeUp 0.9s cubic-bezier(0.16,1,0.3,1) both;
 }
-
+.stagger-in {
+  animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both;
+}
 .dash-in {
   animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) both;
 }
+.pop-in {
+  animation: popIn 0.35s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+/* Carte interactive : effet de survol standard sur tout le site */
 .card-hover {
   transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), box-shadow 0.25s ease, border-color 0.25s ease;
 }
 .card-hover:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px -12px rgba(27,42,74,0.25);
-  border-color: #B8862E;
+  transform: translateY(-4px);
+  box-shadow: 0 14px 28px -14px rgba(3, 78, 40, 0.28);
+  border-color: var(--gold-400);
+}
+
+/* Bouton standard : retour tactile au clic */
+.btn-press {
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+.btn-press:hover {
+  filter: brightness(1.05);
+}
+
+/* Lien animé avec soulignement qui se dessine */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -2px;
+  height: 2px;
+  width: 0;
+  background: var(--gold-400);
+  transition: width 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* Image qui s'agrandit légèrement au survol (galerie, actualités) */
+.img-zoom {
+  overflow: hidden;
+}
+.img-zoom img {
+  transition: transform 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.img-zoom:hover img {
+  transform: scale(1.08);
+}
+
+/* Halo doré discret, pour les éléments à mettre en avant */
+.glow-gold {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+/* ===================================================================
+   VISIONNEUSE PHOTO (lightbox) — pour que les photos et publications
+   se distinguent visuellement lorsqu'on clique dessus.
+   =================================================================== */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 20, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.5rem;
+  animation: fadeUp 0.25s ease both;
+}
+.lightbox-content {
+  animation: lightboxIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
+  max-width: min(90vw, 1100px);
+  max-height: 88vh;
+}
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 2px;
+  box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal.revealed { opacity: 1; transform: none; transition: none; }
-  .float-slow, .hero-in, .dash-in { animation: none !important; }
-  .card-hover, .card-hover:hover { transition: none; transform: none; }
-}
-
-@media print {
-  @page {
-    size: letter;
-    margin: 0;
-  }
-  body * {
-    visibility: hidden;
-  }
-  #print-area,
-  #print-area * {
-    visibility: visible;
-    font-family: 'Times New Roman', Times, serif !important;
-  }
-  #print-area {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-  }
-  #certificate-paper {
-    box-shadow: none !important;
-    width: 8.5in !important;
-    height: 11in !important;
-  }
+  .float-slow, .hero-in, .dash-in, .stagger-in, .pop-in, .glow-gold { animation: none !important; }
+  .card-hover, .card-hover:hover, .img-zoom img, .img-zoom:hover img { transition: none; transform: none; }
 }
