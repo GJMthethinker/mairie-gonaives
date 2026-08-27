@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useApp } from "../layout";
+import PizZip from "pizzip";
+import Docxtemplater from "docxtemplater";
 
 const fieldTypeLabel = { text: "Texte", textarea: "Texte long", date: "Date", number: "Nombre" };
 
@@ -30,6 +32,8 @@ export default function DocumentsPage() {
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [openingArchived, setOpeningArchived] = useState(false);
+  const [fillError, setFillError] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   async function loadTemplates() {
     const { data } = await supabase.from("templates").select("*, services(name, code)").order("name");
@@ -66,10 +70,44 @@ export default function DocumentsPage() {
     setActiveTemplate(t);
     setValues({});
     setGenerated(null);
+    setFillError("");
+  }
+
+  async function recordDocument(activeTemplateRef, docNumber, inserted) {
+    // Archivage automatique du document généré
+    await supabase.from("archives").insert({
+      service_id: activeTemplateRef.service_id,
+      title: `${activeTemplateRef.name} — ${docNumber}`,
+      description: `Document généré automatiquement`,
+      source: "document",
+      document_id: inserted.id,
+      created_by: profile.id,
+    });
+
+    // Si le document est un certificat de résidence, on alimente le registre des résidents
+    if (activeTemplateRef.name.toLowerCase().includes("résidence")) {
+      const fullName = findValueByLabel(activeTemplateRef.fields, values, ["nom complet", "nom"]);
+      const address = findValueByLabel(activeTemplateRef.fields, values, ["adresse"]);
+      const phone = findValueByLabel(activeTemplateRef.fields, values, ["téléphone", "telephone"]);
+      const birthDate = findValueByLabel(activeTemplateRef.fields, values, ["date de naissance"]);
+      const birthPlace = findValueByLabel(activeTemplateRef.fields, values, ["lieu de naissance"]);
+      if (fullName) {
+        await supabase.from("residents").insert({
+          full_name: fullName,
+          address,
+          phone,
+          birth_date: birthDate,
+          birth_place: birthPlace,
+          document_id: inserted.id,
+          service_id: activeTemplateRef.service_id,
+        });
+      }
+    }
   }
 
   async function handleGenerate(e) {
     e.preventDefault();
+    setFillError("");
     const serviceCode = activeTemplate.services.code;
     const { data: docNumber, error: numError } = await supabase.rpc("next_doc_number", {
       p_service_code: serviceCode,
@@ -95,36 +133,41 @@ export default function DocumentsPage() {
       return;
     }
     setGenerated(inserted);
+    await recordDocument(activeTemplate, docNumber, inserted);
+  }
 
-    // Archivage automatique du document généré
-    await supabase.from("archives").insert({
-      service_id: activeTemplate.service_id,
-      title: `${activeTemplate.name} — ${docNumber}`,
-      description: `Document généré automatiquement`,
-      source: "document",
-      document_id: inserted.id,
-      created_by: profile.id,
-    });
-
-    // Si le document est un certificat de résidence, on alimente le registre des résidents
-    if (activeTemplate.name.toLowerCase().includes("résidence")) {
-      const fullName = findValueByLabel(activeTemplate.fields, values, ["nom complet", "nom"]);
-      const address = findValueByLabel(activeTemplate.fields, values, ["adresse"]);
-      const phone = findValueByLabel(activeTemplate.fields, values, ["téléphone", "telephone"]);
-      const birthDate = findValueByLabel(activeTemplate.fields, values, ["date de naissance"]);
-      const birthPlace = findValueByLabel(activeTemplate.fields, values, ["lieu de naissance"]);
-      if (fullName) {
-        await supabase.from("residents").insert({
-          full_name: fullName,
-          address,
-          phone,
-          birth_date: birthDate,
-          birth_place: birthPlace,
-          document_id: inserted.id,
-          service_id: activeTemplate.service_id,
-        });
-      }
+  async function downloadFilledDocx() {
+    setDownloading(true);
+    setFillError("");
+    try {
+      const res = await fetch(activeTemplate.source_file_url);
+      if (!res.ok) throw new Error("Impossible de récupérer l'exemplaire du document.");
+      const buf = await res.arrayBuffer();
+      const zip = new PizZip(buf);
+      const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+      const data = {};
+      (activeTemplate.fields || []).forEach((f) => {
+        const raw = values[f.key];
+        data[f.key] = f.type === "date" ? frDate(raw) : raw ?? "";
+      });
+      data["reference"] = generated.doc_number;
+      doc.render(data);
+      const out = doc.getZip().generate({
+        type: "blob",
+        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      const url = URL.createObjectURL(out);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${activeTemplate.name.replace(/\s+/g, "_")}_${generated.doc_number}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setFillError("Erreur lors du remplissage du document : " + err.message);
     }
+    setDownloading(false);
   }
 
   async function handleDeleteTemplate(id) {
@@ -158,6 +201,9 @@ export default function DocumentsPage() {
               <button onClick={() => openTemplate(t)} className="text-left w-full">
                 <p className="font-medium text-sm">{t.name}</p>
                 <p className="text-xs text-[#8A857A] mt-1">{t.services?.name}</p>
+                {t.source_file_url && (
+                  <p className="text-[10px] text-[#B8862E] mt-1 uppercase tracking-wide">Modèle Word</p>
+                )}
               </button>
               {isAdmin && (
                 <button
@@ -213,7 +259,36 @@ export default function DocumentsPage() {
         </div>
       )}
 
-      {generated && (
+      {generated && activeTemplate.source_file_url && (
+        <div className="max-w-xl">
+          <button
+            onClick={() => {
+              setActiveTemplate(null);
+              setGenerated(null);
+            }}
+            className="text-sm text-[#5B584F] mb-4"
+          >
+            ← Nouveau document
+          </button>
+          <div className="bg-white border border-[#E3DCC8] rounded-sm p-6 text-center">
+            <p className="font-serif text-lg text-[#1B2A4A] mb-2">Document créé</p>
+            <p className="text-sm text-[#5B584F] mb-1">Référence : <strong>{generated.doc_number}</strong></p>
+            <p className="text-xs text-[#8A857A] mb-5">
+              Ce modèle utilise un exemplaire Word. Téléchargez le document rempli, prêt à imprimer.
+            </p>
+            <button
+              onClick={downloadFilledDocx}
+              disabled={downloading}
+              className="bg-[#B8862E] text-white px-5 py-2.5 rounded-sm text-sm font-medium disabled:opacity-50"
+            >
+              {downloading ? "Préparation..." : "Télécharger le document (.docx)"}
+            </button>
+            {fillError && <p className="text-xs text-[#A8332B] mt-3">{fillError}</p>}
+          </div>
+        </div>
+      )}
+
+      {generated && !activeTemplate.source_file_url && (
         <div className="max-w-2xl">
           <div className="flex items-center justify-between mb-4">
             <button
@@ -270,7 +345,6 @@ function DocumentPreview({ template, doc }) {
         boxSizing: "border-box",
       }}
     >
-      {/* En-tête avec logos */}
       <div className="flex items-start justify-between shrink-0">
         <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
         <div className="text-center flex-1 px-2">
@@ -287,12 +361,10 @@ function DocumentPreview({ template, doc }) {
 
       <h3 className="text-center font-bold underline text-base mt-4 mb-8 shrink-0">{template.name.toUpperCase()}</h3>
 
-      {/* Corps — grandit pour occuper l'espace disponible */}
       <div className="flex-1">
         <p className="whitespace-pre-line leading-relaxed text-[15px] text-justify">{body}</p>
       </div>
 
-      {/* Pied de page — toujours collé en bas de la feuille */}
       <div className="shrink-0">
         <p className="text-[15px]">
           Gonaïves, le {frDate(doc.created_at)}, An {independenceYear}ème de l'Indépendance.
@@ -319,6 +391,7 @@ function NewTemplateModal({ services, onClose, onSaved }) {
   const [fields, setFields] = useState([{ key: "champ1", label: "Champ 1", type: "text" }]);
   const [body, setBody] = useState("");
   const [signatory, setSignatory] = useState("");
+  const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
   function updateField(i, updates) {
@@ -330,14 +403,36 @@ function NewTemplateModal({ services, onClose, onSaved }) {
 
   async function submit(e) {
     e.preventDefault();
-    if (!name.trim() || !body.trim()) return;
+    if (!name.trim()) return;
+    if (!file && !body.trim()) {
+      alert("Joignez un exemplaire Word, ou décrivez le corps du document.");
+      return;
+    }
     setSaving(true);
+
+    let source_file_url = null;
+    let source_file_name = null;
+    if (file) {
+      const path = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, "")}`;
+      const { error: upErr } = await supabase.storage.from("document-templates").upload(path, file);
+      if (upErr) {
+        setSaving(false);
+        alert("Erreur fichier : " + upErr.message);
+        return;
+      }
+      const { data: pub } = supabase.storage.from("document-templates").getPublicUrl(path);
+      source_file_url = pub?.publicUrl || null;
+      source_file_name = file.name;
+    }
+
     const { error } = await supabase.from("templates").insert({
       name: name.trim(),
       service_id: serviceId,
       fields: fields.filter((f) => f.key.trim() && f.label.trim()),
-      body,
+      body: body.trim() || null,
       signatory: signatory.trim() || null,
+      source_file_url,
+      source_file_name,
     });
     setSaving(false);
     if (error) {
@@ -411,7 +506,30 @@ function NewTemplateModal({ services, onClose, onSaved }) {
             >
               + Ajouter un champ
             </button>
+            {fields.length > 0 && (
+              <p className="text-[11px] text-[#8A857A] mt-2">
+                Clés disponibles pour l'exemplaire Word : {fields.filter(f=>f.key).map(f => `{{${f.key}}}`).join(" ")}
+              </p>
+            )}
           </div>
+
+          <div className="border-t border-[#E3DCC8] pt-4">
+            <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
+              Exemplaire Word du document (.docx) — recommandé
+            </label>
+            <input
+              type="file"
+              accept=".docx"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full text-sm"
+            />
+            <p className="text-[11px] text-[#8A857A] mt-2">
+              Dans le fichier Word, écrivez <code>{"{{cle}}"}</code> à l'endroit exact où chaque information doit
+              apparaître (la clé doit correspondre à celle affichée au-dessus). Ex : <code>{"{{nom_complet}}"}</code>.
+              La référence du document est disponible via <code>{"{{reference}}"}</code>.
+            </p>
+          </div>
+
           <div>
             <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
               Signataire (optionnel — ex : "Gina JEANTY, Présidente")
@@ -422,17 +540,21 @@ function NewTemplateModal({ services, onClose, onSaved }) {
               className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
             />
           </div>
-          <div>
-            <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
-              Corps du document — utilisez {"{{libellé}}"} pour un champ
-            </label>
-            <textarea
-              rows={6}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm font-mono"
-            />
-          </div>
+
+          {!file && (
+            <div>
+              <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
+                Ou décrivez le corps du document ici — utilisez {"{{libellé}}"} pour un champ
+              </label>
+              <textarea
+                rows={6}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm font-mono"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={saving}
