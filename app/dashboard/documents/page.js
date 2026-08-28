@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useApp } from "../layout";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
+import QRCode from "qrcode";
 
 const fieldTypeLabel = { text: "Texte", textarea: "Texte long", date: "Date", number: "Nombre" };
 
@@ -36,6 +37,10 @@ export default function DocumentsPage() {
   const [openingArchived, setOpeningArchived] = useState(false);
   const [fillError, setFillError] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [nif, setNif] = useState("");
+  const [ninu, setNinu] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [genBusy, setGenBusy] = useState(false);
 
   async function loadTemplates() {
     const { data } = await supabase.from("templates").select("*, services(name, code)").order("name");
@@ -77,10 +82,17 @@ export default function DocumentsPage() {
     setValues({});
     setGenerated(null);
     setFillError("");
+    setNif("");
+    setNinu("");
+    setQrDataUrl(null);
+  }
+
+  // Le document concerne-t-il une personne identifiable (champ "nom" présent) ?
+  function templateHasPersonField(t) {
+    return !!(t.fields || []).find((f) => ["nom complet", "nom"].some((p) => f.label.toLowerCase().includes(p)));
   }
 
   async function recordDocument(activeTemplateRef, docNumber, inserted) {
-    // Archivage automatique du document généré
     await supabase.from("archives").insert({
       service_id: activeTemplateRef.service_id,
       title: `${activeTemplateRef.name} — ${docNumber}`,
@@ -90,7 +102,6 @@ export default function DocumentsPage() {
       created_by: profile.id,
     });
 
-    // Si le document est un certificat de résidence, on alimente le registre des résidents
     if (activeTemplateRef.name.toLowerCase().includes("résidence")) {
       const fullName = findValueByLabel(activeTemplateRef.fields, values, ["nom complet", "nom"]);
       const address = findValueByLabel(activeTemplateRef.fields, values, ["adresse"]);
@@ -111,35 +122,120 @@ export default function DocumentsPage() {
     }
   }
 
+  async function buildAndShowQr(code) {
+    const url = `${window.location.origin}/verifier?code=${encodeURIComponent(code)}`;
+    const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 220 });
+    setQrDataUrl(dataUrl);
+  }
+
   async function handleGenerate(e) {
     e.preventDefault();
     setFillError("");
-    const serviceCode = activeTemplate.services.code;
-    const { data: docNumber, error: numError } = await supabase.rpc("next_doc_number", {
-      p_service_code: serviceCode,
-    });
-    if (numError) {
-      alert("Erreur lors de la génération du numéro : " + numError.message);
+    setGenBusy(true);
+
+    const fullName = findValueByLabel(activeTemplate.fields, values, ["nom complet", "nom"]);
+    const needsPersonne = templateHasPersonField(activeTemplate);
+
+    if (needsPersonne && !nif.trim() && !ninu.trim()) {
+      setGenBusy(false);
+      setFillError("Indiquez le NIF ou le NINU de la personne concernée, pour le code de vérification.");
       return;
     }
-    const { data: inserted, error } = await supabase
-      .from("documents")
-      .insert({
-        template_id: activeTemplate.id,
-        template_name: activeTemplate.name,
-        service_id: activeTemplate.service_id,
-        doc_number: docNumber,
-        values,
-        created_by: profile.id,
-      })
-      .select()
-      .single();
-    if (error) {
-      alert("Erreur : " + error.message);
-      return;
+
+    // 1. Trouver ou créer la personne, si le document la concerne
+    let personne = null;
+    if (needsPersonne) {
+      const { data: p, error: perr } = await supabase.rpc("find_or_create_personne", {
+        p_nom_complet: fullName || "—",
+        p_nif: nif.trim(),
+        p_ninu: ninu.trim(),
+        p_telephone: findValueByLabel(activeTemplate.fields, values, ["téléphone", "telephone"]) || "",
+        p_adresse: findValueByLabel(activeTemplate.fields, values, ["adresse"]) || "",
+      });
+      if (perr) {
+        setGenBusy(false);
+        setFillError("Erreur identité : " + perr.message);
+        return;
+      }
+      personne = p;
     }
+
+    // 2. Un document existe-t-il déjà pour cette personne + ce modèle ? -> mise à jour versionnée
+    let existing = null;
+    if (personne) {
+      const { data: ex } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("template_id", activeTemplate.id)
+        .eq("personne_id", personne.id)
+        .maybeSingle();
+      existing = ex;
+    }
+
+    let inserted;
+    let docNumber;
+    const suffixe = activeTemplate.code_suffixe || activeTemplate.name.slice(0, 2).toUpperCase();
+
+    if (existing) {
+      // Mise à jour : on garde le même numéro et le même code, on archive l'ancien état
+      docNumber = existing.doc_number;
+      await supabase.from("documents_versions").insert({
+        document_id: existing.id,
+        valeurs_avant: existing.values,
+        valeurs_apres: values,
+        modifie_par: profile.id,
+      });
+      const { data: upd, error } = await supabase
+        .from("documents")
+        .update({ values, updated_at: new Date().toISOString() })
+        .eq("id", existing.id)
+        .select()
+        .single();
+      if (error) {
+        setGenBusy(false);
+        setFillError("Erreur : " + error.message);
+        return;
+      }
+      inserted = upd;
+    } else {
+      const { data: num, error: numError } = await supabase.rpc("next_doc_number", {
+        p_service_code: activeTemplate.services.code,
+      });
+      if (numError) {
+        setGenBusy(false);
+        setFillError("Erreur lors de la génération du numéro : " + numError.message);
+        return;
+      }
+      docNumber = num;
+      const codeVerification = personne ? `${personne.code_unique}-${suffixe}` : docNumber;
+      const { data: ins, error } = await supabase
+        .from("documents")
+        .insert({
+          template_id: activeTemplate.id,
+          template_name: activeTemplate.name,
+          service_id: activeTemplate.service_id,
+          doc_number: docNumber,
+          values,
+          created_by: profile.id,
+          personne_id: personne?.id || null,
+          code_verification: codeVerification,
+        })
+        .select()
+        .single();
+      if (error) {
+        setGenBusy(false);
+        setFillError("Erreur : " + error.message);
+        return;
+      }
+      inserted = ins;
+      await recordDocument(activeTemplate, docNumber, inserted);
+    }
+
     setGenerated(inserted);
-    await recordDocument(activeTemplate, docNumber, inserted);
+    if (inserted.code_verification) {
+      await buildAndShowQr(inserted.code_verification);
+    }
+    setGenBusy(false);
   }
 
   async function downloadFilledDocx() {
@@ -267,8 +363,37 @@ export default function DocumentsPage() {
                   )}
                 </div>
               ))}
-              <button type="submit" className="w-full bg-[#1B2A4A] text-white rounded-sm px-4 py-2.5 text-sm font-medium">
-                Générer le document
+              {templateHasPersonField(activeTemplate) && (
+                <div className="border-t border-[#E3DCC8] pt-4">
+                  <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-2">
+                    Identité — pour le code de vérification (QR code)
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      value={nif}
+                      onChange={(e) => setNif(e.target.value)}
+                      placeholder="NIF"
+                      className="flex-1 border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={ninu}
+                      onChange={(e) => setNinu(e.target.value)}
+                      placeholder="NINU"
+                      className="flex-1 border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <p className="text-[11px] text-[#8A857A] mt-1">
+                    Un seul des deux suffit. Retrouve automatiquement la personne si elle est déjà connue.
+                  </p>
+                </div>
+              )}
+              {fillError && <p className="text-xs text-[#A8332B]">{fillError}</p>}
+              <button
+                type="submit"
+                disabled={genBusy}
+                className="w-full bg-[#1B2A4A] text-white rounded-sm px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+              >
+                {genBusy ? "Génération..." : "Générer le document"}
               </button>
             </form>
           </div>
@@ -289,6 +414,15 @@ export default function DocumentsPage() {
           <div className="bg-white border border-[#E3DCC8] rounded-sm p-6 text-center">
             <p className="font-serif text-lg text-[#1B2A4A] mb-2">Document créé</p>
             <p className="text-sm text-[#5B584F] mb-1">Référence : <strong>{generated.doc_number}</strong></p>
+            {qrDataUrl && (
+              <div className="my-4">
+                <img src={qrDataUrl} alt="QR code de vérification" className="mx-auto w-32 h-32" />
+                <p className="text-[11px] text-[#8A857A] mt-1">Code : {generated.code_verification}</p>
+                <p className="text-[10px] text-[#A8332B] mt-1">
+                  Ce modèle Word ne peut pas encore intégrer le QR code automatiquement — imprimez-le à part et joignez-le au document.
+                </p>
+              </div>
+            )}
             <p className="text-xs text-[#8A857A] mb-5">
               Ce modèle utilise un exemplaire Word. Téléchargez le document rempli, prêt à imprimer.
             </p>
@@ -321,7 +455,7 @@ export default function DocumentsPage() {
             </button>
           </div>
           <div id="print-area">
-            <DocumentPreview template={activeTemplate} doc={generated} />
+            <DocumentPreview template={activeTemplate} doc={generated} qrDataUrl={qrDataUrl} />
           </div>
         </div>
       )}
@@ -347,7 +481,7 @@ export default function DocumentsPage() {
   );
 }
 
-function DocumentPreview({ template, doc }) {
+function DocumentPreview({ template, doc, qrDataUrl }) {
   const formattedValues = {};
   (template.fields || []).forEach((f) => {
     const raw = doc.values[f.key];
@@ -399,9 +533,18 @@ function DocumentPreview({ template, doc }) {
           <p>{template.signatory || "Signature autorisée"}</p>
         </div>
 
-        <div className="mt-10 pt-3 border-t border-black text-center text-xs">
-          <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
-          <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
+        <div className="mt-10 pt-3 border-t border-black flex items-center gap-3">
+          {qrDataUrl && (
+            <div className="shrink-0 text-center">
+              <img src={qrDataUrl} alt="QR de vérification" style={{ width: "0.75in", height: "0.75in" }} />
+              <p style={{ fontSize: "7px" }}>{doc.code_verification}</p>
+            </div>
+          )}
+          <div className="flex-1 text-center text-xs">
+            <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
+            <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
+            {qrDataUrl && <p className="text-[10px] mt-0.5">Vérifiez ce document sur mairie-gonaives-m7ya.vercel.app/verifier</p>}
+          </div>
         </div>
       </div>
     </div>
@@ -414,6 +557,7 @@ function NewTemplateModal({ services, onClose, onSaved }) {
   const [fields, setFields] = useState([{ key: "champ1", label: "Champ 1", type: "text" }]);
   const [body, setBody] = useState("");
   const [signatory, setSignatory] = useState("");
+  const [codeSuffixe, setCodeSuffixe] = useState("");
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -454,6 +598,7 @@ function NewTemplateModal({ services, onClose, onSaved }) {
       fields: fields.filter((f) => f.key.trim() && f.label.trim()),
       body: body.trim() || null,
       signatory: signatory.trim() || null,
+      code_suffixe: codeSuffixe.trim().toUpperCase() || name.trim().slice(0, 2).toUpperCase(),
       source_file_url,
       source_file_name,
     });
@@ -561,6 +706,19 @@ function NewTemplateModal({ services, onClose, onSaved }) {
               value={signatory}
               onChange={(e) => setSignatory(e.target.value)}
               className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wide text-[#8A857A] mb-1">
+              Suffixe du code de vérification (optionnel — ex : "CR" pour Certificat de résidence)
+            </label>
+            <input
+              value={codeSuffixe}
+              onChange={(e) => setCodeSuffixe(e.target.value)}
+              maxLength={4}
+              placeholder="Déduit du nom si laissé vide"
+              className="w-full border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm uppercase"
             />
           </div>
 
