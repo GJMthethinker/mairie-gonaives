@@ -158,6 +158,7 @@ export default function DashboardLayout({ children }) {
     { href: "/dashboard/agenda", label: "Agenda" },
     { href: "/dashboard/messages", label: "Messages" },
     { href: "/dashboard/actualites", label: "Actualités" },
+    { href: "/dashboard/galerie", label: "Galerie" },
     { href: "/dashboard/annonces", label: "Annonces" },
     { href: "/dashboard/annuaire", label: "Annuaire" },
     ...(isAdmin ? [{ href: "/dashboard/employes", label: "Employés" }] : []),
