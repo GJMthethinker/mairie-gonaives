@@ -151,6 +151,7 @@ export default function DashboardLayout({ children }) {
   const nav = [
     ...(isAdmin ? [{ href: "/dashboard", label: "Tableau de bord" }] : []),
     { href: "/dashboard/documents", label: "Documents" },
+    ...(isAdmin || profile.services?.code === "CAI" ? [{ href: "/dashboard/caisse", label: "Caisse" }] : []),
     { href: "/dashboard/registre", label: "Registre" },
     { href: "/dashboard/archives", label: "Archives" },
     { href: "/dashboard/residents", label: "Résidents" },
