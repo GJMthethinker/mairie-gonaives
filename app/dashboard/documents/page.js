@@ -163,13 +163,14 @@ export default function DocumentsPage() {
     // 2. Un document existe-t-il déjà pour cette personne + ce modèle ? -> mise à jour versionnée
     let existing = null;
     if (personne) {
-      const { data: ex } = await supabase
+      const { data: exList } = await supabase
         .from("documents")
         .select("*")
         .eq("template_id", activeTemplate.id)
         .eq("personne_id", personne.id)
-        .maybeSingle();
-      existing = ex;
+        .order("created_at", { ascending: false })
+        .limit(1);
+      existing = exList && exList.length > 0 ? exList[0] : null;
     }
 
     let inserted;
