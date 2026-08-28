@@ -70,12 +70,20 @@ export default function HomePage() {
               <p className="font-display text-lg leading-tight">Mairie des Gonaïves</p>
             </div>
           </div>
-          <a
-            href="/login"
-            className="btn-press text-sm border border-[#F5E600]/60 text-[#F5E600] rounded-sm px-4 py-2 hover:bg-[#F5E600] hover:text-[#034E28] transition-colors"
-          >
-            Espace employé
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href="/verifier"
+              className="btn-press text-xs sm:text-sm text-[#F5E600]/90 hover:text-[#F5E600] underline-offset-2 hover:underline"
+            >
+              Vérifier un document
+            </a>
+            <a
+              href="/login"
+              className="btn-press text-sm border border-[#F5E600]/60 text-[#F5E600] rounded-sm px-4 py-2 hover:bg-[#F5E600] hover:text-[#034E28] transition-colors"
+            >
+              Espace employé
+            </a>
+          </div>
         </div>
       </header>
 
@@ -231,7 +239,10 @@ export default function HomePage() {
       )}
 
       <footer className="text-center text-xs text-[var(--ink-muted)] py-10 border-t border-[var(--line)] mt-8">
-        Mairie des Gonaïves, Artibonite, Haïti (W.I)
+        <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
+        <a href="/verifier" className="inline-block mt-2 text-[#034E28] hover:underline">
+          Vérifier l'authenticité d'un document
+        </a>
       </footer>
     </div>
   );
