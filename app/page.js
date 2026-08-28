@@ -1,47 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 function frDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-}
-
-function useReveal() {
-  const ref = useRef(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const children = el.querySelectorAll(".reveal");
-    if (!("IntersectionObserver" in window)) {
-      children.forEach((c) => c.classList.add("revealed"));
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("revealed");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.15 }
-    );
-    children.forEach((child, i) => {
-      child.style.transitionDelay = `${Math.min(i, 6) * 80}ms`;
-      observer.observe(child);
-    });
-    const fallback = setTimeout(() => {
-      children.forEach((c) => c.classList.add("revealed"));
-    }, 1200);
-    return () => {
-      observer.disconnect();
-      clearTimeout(fallback);
-    };
-  }, []);
-  return ref;
 }
 
 const CalendarIcon = () => (
@@ -69,9 +33,6 @@ export default function HomePage() {
   const [activeForm, setActiveForm] = useState(null);
   const [lightbox, setLightbox] = useState(null);
   const [mounted, setMounted] = useState(false);
-  const galleryRef = useReveal();
-  const newsRef = useReveal();
-  const actionsRef = useReveal();
 
   useEffect(() => {
     setMounted(true);
@@ -123,8 +84,7 @@ export default function HomePage() {
           className="absolute inset-0 w-full h-full bg-cover bg-[25%_42%]"
           style={{ backgroundImage: "url('/mairie-boulevard.jpg')" }}
         />
-        <div className="absolute inset-0 bg-[#022E17]/80" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#022E17]/85 via-[#022E17]/70 to-[#034E28]/95" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#022E17]/70 via-[#022E17]/45 to-[#034E28]/85" />
         <img
           src="/palmiste.jpg"
           alt=""
@@ -174,17 +134,17 @@ export default function HomePage() {
       </section>
 
       <main className="max-w-5xl mx-auto px-6 py-16 space-y-20">
-        <section ref={galleryRef}>
+        <section>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="reveal font-display text-2xl text-[#034E28]">La Mairie en action</h2>
-            <a href="/galerie" className="reveal link-underline text-sm text-[#034E28] font-medium">Voir la galerie →</a>
+            <h2 className="stagger-in font-display text-2xl text-[#034E28]">La Mairie en action</h2>
+            <a href="/galerie" className="stagger-in link-underline text-sm text-[#034E28] font-medium">Voir la galerie →</a>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {gallery.map((img, i) => (
               <button
                 key={img.id || i}
                 onClick={() => setLightbox({ src: img.image_url, alt: img.caption || "" })}
-                className="reveal img-zoom overflow-hidden rounded-sm border border-[var(--line)] aspect-[4/5] card-hover text-left"
+                className="stagger-in img-zoom overflow-hidden rounded-sm border border-[var(--line)] aspect-[4/5] card-hover text-left"
               >
                 <img src={img.image_url} alt={img.caption || ""} className="w-full h-full object-cover" />
               </button>
@@ -192,19 +152,19 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section ref={newsRef}>
+        <section>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="reveal font-display text-2xl text-[#034E28]">Actualités</h2>
-            <a href="/actualites" className="reveal link-underline text-sm text-[#034E28] font-medium">Voir toutes les actualités →</a>
+            <h2 className="stagger-in font-display text-2xl text-[#034E28]">Actualités</h2>
+            <a href="/actualites" className="stagger-in link-underline text-sm text-[#034E28] font-medium">Voir toutes les actualités →</a>
           </div>
           {loading ? (
             <p className="text-sm text-[var(--ink-muted)]">Chargement…</p>
           ) : news.length === 0 ? (
-            <p className="reveal text-sm text-[var(--ink-muted)]">Aucune actualité publiée pour le moment.</p>
+            <p className="stagger-in text-sm text-[var(--ink-muted)]">Aucune actualité publiée pour le moment.</p>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">
               {news.map((n) => (
-                <div key={n.id} className="reveal card-hover bg-white border border-[var(--line)] rounded-sm overflow-hidden">
+                <div key={n.id} className="stagger-in card-hover bg-white border border-[var(--line)] rounded-sm overflow-hidden">
                   {n.image_url && (
                     <button onClick={() => setLightbox({ src: n.image_url, alt: n.title })} className="img-zoom block w-full h-44 overflow-hidden">
                       <img src={n.image_url} alt={n.title} className="w-full h-full object-cover" />
@@ -221,12 +181,12 @@ export default function HomePage() {
           )}
         </section>
 
-        <section ref={actionsRef}>
-          <h2 className="reveal font-display text-2xl text-[#034E28] mb-6">Nous contacter</h2>
+        <section>
+          <h2 className="stagger-in font-display text-2xl text-[#034E28] mb-6">Nous contacter</h2>
           <div className="grid sm:grid-cols-3 gap-4">
             <button
               onClick={() => setActiveForm("rdv")}
-              className="reveal card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
+              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
             >
               <CalendarIcon />
               <p className="font-medium text-sm mt-3">Prendre rendez-vous</p>
@@ -234,7 +194,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveForm("doleance")}
-              className="reveal card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
+              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
             >
               <MessageIcon />
               <p className="font-medium text-sm mt-3">Laisser un message</p>
@@ -242,7 +202,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveForm("engagement")}
-              className="reveal card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
+              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
             >
               <HeartIcon />
               <p className="font-medium text-sm mt-3">Proposer mon aide</p>
