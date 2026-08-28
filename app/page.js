@@ -63,6 +63,7 @@ const HeartIcon = () => (
 
 export default function HomePage() {
   const [news, setNews] = useState([]);
+  const [gallery, setGallery] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeForm, setActiveForm] = useState(null);
@@ -75,9 +76,11 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     async function load() {
-      const { data: n } = await supabase.from("news").select("*").order("published_at", { ascending: false }).limit(10);
+      const { data: n } = await supabase.from("news").select("*").order("published_at", { ascending: false }).limit(4);
+      const { data: g } = await supabase.from("gallery_photos").select("*").order("published_at", { ascending: false }).limit(4);
       const { data: s } = await supabase.from("services").select("*").order("name");
       setNews(n || []);
+      setGallery(g || []);
       setServices(s || []);
       setLoading(false);
     }
@@ -118,7 +121,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden text-[#F7F4E6] py-24 px-6 text-center">
         <div
           className="absolute inset-0 w-full h-full bg-cover bg-center"
-          style={{ backgroundImage: "url('/mairie-aerienne.jpg')" }}
+          style={{ backgroundImage: "url('/mairie-facade.jpg')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#022E17]/92 via-[#034E28]/85 to-[#034E28]/95" />
         <img
@@ -154,27 +157,28 @@ export default function HomePage() {
 
       <main className="max-w-5xl mx-auto px-6 py-16 space-y-20">
         <section ref={galleryRef}>
-          <h2 className="reveal font-display text-2xl text-[#034E28] mb-6">La Mairie en action</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="reveal font-display text-2xl text-[#034E28]">La Mairie en action</h2>
+            <a href="/galerie" className="reveal link-underline text-sm text-[#034E28] font-medium">Voir la galerie →</a>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { src: "/mairie-facade.jpg", alt: "L'Hôtel de Ville des Gonaïves" },
-              { src: "/mairie-direction.jpg", alt: "La direction municipale" },
-              { src: "/mairie-mairesse.jpg", alt: "La Mairesse Gina Jeanty" },
-              { src: "/mairie-equipe.jpg", alt: "L'équipe de la Mairie en initiative" },
-            ].map((img, i) => (
+            {gallery.map((img, i) => (
               <button
-                key={i}
-                onClick={() => setLightbox(img)}
+                key={img.id || i}
+                onClick={() => setLightbox({ src: img.image_url, alt: img.caption || "" })}
                 className="reveal img-zoom overflow-hidden rounded-sm border border-[var(--line)] aspect-[4/5] card-hover text-left"
               >
-                <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
+                <img src={img.image_url} alt={img.caption || ""} className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
         </section>
 
         <section ref={newsRef}>
-          <h2 className="reveal font-display text-2xl text-[#034E28] mb-6">Actualités</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="reveal font-display text-2xl text-[#034E28]">Actualités</h2>
+            <a href="/actualites" className="reveal link-underline text-sm text-[#034E28] font-medium">Voir toutes les actualités →</a>
+          </div>
           {loading ? (
             <p className="text-sm text-[var(--ink-muted)]">Chargement…</p>
           ) : news.length === 0 ? (
