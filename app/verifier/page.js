@@ -71,11 +71,13 @@ export default function VerifierPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       streamRef.current = stream;
+      setScanning(true);
+      if (!videoRef.current) throw new Error("élément vidéo introuvable, réessayez");
       videoRef.current.srcObject = stream;
       await videoRef.current.play();
-      setScanning(true);
       tick();
     } catch (e) {
+      stopScan();
       setScanError("Impossible d'accéder à la caméra : " + e.message);
     }
   }
@@ -140,23 +142,23 @@ export default function VerifierPage() {
           </button>
         )}
 
-        {scanning && (
-          <div className="mb-4">
-            <div className="relative rounded-sm overflow-hidden border-2 border-[#034E28] bg-black">
-              <video ref={videoRef} className="w-full aspect-square object-cover" playsInline muted />
-              <div className="absolute inset-8 border-2 border-[#F5E600] rounded-sm pointer-events-none" />
-            </div>
-            <canvas ref={canvasRef} className="hidden" />
-            <button
-              type="button"
-              onClick={stopScan}
-              className="btn-press w-full mt-2 border border-[var(--line)] rounded-sm px-4 py-2 text-sm"
-            >
-              Arrêter le scan
-            </button>
-            <p className="text-xs text-[var(--ink-muted)] text-center mt-2">Visez le QR code du document.</p>
+        {/* La vidéo reste toujours présente dans la page (juste masquée) pour que la
+            référence existe déjà au moment où la caméra doit s'y raccorder. */}
+        <div className={scanning ? "mb-4" : "hidden"}>
+          <div className="relative rounded-sm overflow-hidden border-2 border-[#034E28] bg-black">
+            <video ref={videoRef} className="w-full aspect-square object-cover" playsInline muted />
+            <div className="absolute inset-8 border-2 border-[#F5E600] rounded-sm pointer-events-none" />
           </div>
-        )}
+          <button
+            type="button"
+            onClick={stopScan}
+            className="btn-press w-full mt-2 border border-[var(--line)] rounded-sm px-4 py-2 text-sm"
+          >
+            Arrêter le scan
+          </button>
+          <p className="text-xs text-[var(--ink-muted)] text-center mt-2">Visez le QR code du document.</p>
+        </div>
+        <canvas ref={canvasRef} className="hidden" />
 
         {scanError && <p className="text-xs text-[#A8332B] mb-4">{scanError}</p>}
 
