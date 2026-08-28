@@ -23,14 +23,16 @@ function frDate(iso) {
   return new Date(y, m - 1, d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
 }
 
+// Trie par échéance la plus proche (date + heure exacte) ; la priorité ne
+// départage plus qu'en cas d'égalité de date/heure ou d'absence d'échéance.
 function sortTasks(list) {
   return [...list].sort((a, b) => {
+    const da = a.due_date ? `${a.due_date}T${a.due_time || "23:59:59"}` : "9999-12-31T23:59:59";
+    const db = b.due_date ? `${b.due_date}T${b.due_time || "23:59:59"}` : "9999-12-31T23:59:59";
+    if (da !== db) return da.localeCompare(db);
     const pa = priorityOrder[a.priority] ?? 1;
     const pb = priorityOrder[b.priority] ?? 1;
-    if (pa !== pb) return pa - pb;
-    const da = a.due_date || "9999-99-99";
-    const db = b.due_date || "9999-99-99";
-    return da.localeCompare(db);
+    return pa - pb;
   });
 }
 
