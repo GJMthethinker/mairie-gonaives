@@ -14,7 +14,8 @@
     "@supabase/supabase-js": "^2.45.0",
     "web-push": "^3.6.7",
     "docxtemplater": "^3.50.0",
-    "pizzip": "^3.1.7"
+    "pizzip": "^3.1.7",
+    "qrcode": "^1.5.3"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.0",
