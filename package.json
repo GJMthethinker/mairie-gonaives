@@ -15,7 +15,8 @@
     "web-push": "^3.6.7",
     "docxtemplater": "^3.50.0",
     "pizzip": "^3.1.7",
-    "qrcode": "^1.5.3"
+    "qrcode": "^1.5.3",
+    "jsqr": "^1.4.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.0",
