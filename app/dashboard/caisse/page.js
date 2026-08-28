@@ -1,12 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useApp } from "../layout";
 
-function frDateTime(iso) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+const MOIS_FR = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
+function partsFromISO(iso) {
+  // iso = "2026-08-28T06:49:00.000Z" (created_at) -> on lit en heure locale
+  const d = new Date(iso);
+  return { y: d.getFullYear(), m: d.getMonth() + 1, day: d.getDate() };
+}
+function dayKey(iso) {
+  const { y, m, day } = partsFromISO(iso);
+  return `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+function monthKey(iso) {
+  const { y, m } = partsFromISO(iso);
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
+function frTime(iso) {
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+function money(n) {
+  return Number(n).toLocaleString("fr-FR") + " G";
+}
+function totals(list) {
+  const entrees = list.filter((m) => m.type === "entree").reduce((s, m) => s + Number(m.montant), 0);
+  const sorties = list.filter((m) => m.type === "sortie").reduce((s, m) => s + Number(m.montant), 0);
+  return { entrees, sorties, solde: entrees - sorties };
 }
 
 export default function CaissePage() {
@@ -16,12 +41,17 @@ export default function CaissePage() {
   const [showNew, setShowNew] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth() + 1);
+  const [day, setDay] = useState(today.getDate());
+
   async function load() {
     const { data } = await supabase
       .from("caisse_mouvements")
       .select("*, personnes(nom_complet, code_unique), services(name)")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(5000);
     setMouvements(data || []);
     setLoading(false);
   }
@@ -30,60 +60,191 @@ export default function CaissePage() {
     load();
   }, []);
 
-  const totalEntrees = mouvements.filter((m) => m.type === "entree").reduce((s, m) => s + Number(m.montant), 0);
-  const totalSorties = mouvements.filter((m) => m.type === "sortie").reduce((s, m) => s + Number(m.montant), 0);
+  function goToday() {
+    const t = new Date();
+    setYear(t.getFullYear());
+    setMonth(t.getMonth() + 1);
+    setDay(t.getDate());
+  }
+
+  // ----- Regroupements -----
+  const parYear = useMemo(() => mouvements.filter((m) => partsFromISO(m.created_at).y === year), [mouvements, year]);
+  const parMonth = useMemo(() => parYear.filter((m) => partsFromISO(m.created_at).m === month), [parYear, month]);
+  const parDay = useMemo(() => parMonth.filter((m) => partsFromISO(m.created_at).day === day), [parMonth, day]);
+
+  const anneesDisponibles = useMemo(() => {
+    const set = new Set(mouvements.map((m) => partsFromISO(m.created_at).y));
+    set.add(today.getFullYear());
+    return [...set].sort((a, b) => b - a);
+  }, [mouvements]);
+
+  const moisDuYear = useMemo(() => {
+    const map = new Map();
+    parYear.forEach((m) => {
+      const mm = partsFromISO(m.created_at).m;
+      if (!map.has(mm)) map.set(mm, []);
+      map.get(mm).push(m);
+    });
+    return [...map.entries()].sort((a, b) => b[0] - a[0]);
+  }, [parYear]);
+
+  const joursDuMois = useMemo(() => {
+    const map = new Map();
+    parMonth.forEach((m) => {
+      const dd = partsFromISO(m.created_at).day;
+      if (!map.has(dd)) map.set(dd, []);
+      map.get(dd).push(m);
+    });
+    return [...map.entries()].sort((a, b) => b[0] - a[0]);
+  }, [parMonth]);
 
   if (loading) return <p className="text-sm text-[#8A857A]">Chargement…</p>;
 
+  const isToday = year === today.getFullYear() && month === today.getMonth() + 1 && day === today.getDate();
+  const tYear = totals(parYear);
+  const tMonth = totals(parMonth);
+  const tDay = totals(parDay);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="font-serif text-2xl text-[#1B2A4A]">Caisse</h2>
-        <button onClick={() => { setShowNew(true); setLastResult(null); }} className="text-sm bg-[#1B2A4A] text-white px-4 py-2 rounded-sm">
-          + Nouveau mouvement
+        <div className="flex gap-2">
+          {!isToday && (
+            <button onClick={goToday} className="text-sm border border-[#D8D0BC] px-3 py-2 rounded-sm">
+              Aujourd'hui
+            </button>
+          )}
+          <button onClick={() => { setShowNew(true); setLastResult(null); }} className="text-sm bg-[#1B2A4A] text-white px-4 py-2 rounded-sm">
+            + Nouveau mouvement
+          </button>
+        </div>
+      </div>
+
+      {/* Fil d'ariane : Année > Mois > Jour */}
+      <div className="flex items-center gap-2 text-sm mb-6 text-[#5B584F]">
+        <button onClick={() => { setMonth(null); setDay(null); }} className={month === null ? "font-medium text-[#1B2A4A]" : "hover:underline"}>
+          {year}
         </button>
+        {month !== null && (
+          <>
+            <span>›</span>
+            <button onClick={() => setDay(null)} className={day === null ? "font-medium text-[#1B2A4A]" : "hover:underline"}>
+              {MOIS_FR[month - 1]}
+            </button>
+          </>
+        )}
+        {day !== null && (
+          <>
+            <span>›</span>
+            <span className="font-medium text-[#1B2A4A]">{day}</span>
+          </>
+        )}
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4 mb-8">
-        <div className="bg-white border border-[#E3DCC8] rounded-sm p-5">
-          <p className="text-xs uppercase tracking-wide text-[#5B7553] mb-1">Total entrées</p>
-          <p className="text-2xl font-serif text-[#1B2A4A]">{totalEntrees.toLocaleString("fr-FR")} G</p>
-        </div>
-        <div className="bg-white border border-[#E3DCC8] rounded-sm p-5">
-          <p className="text-xs uppercase tracking-wide text-[#A8332B] mb-1">Total sorties</p>
-          <p className="text-2xl font-serif text-[#1B2A4A]">{totalSorties.toLocaleString("fr-FR")} G</p>
-        </div>
-      </div>
-
-      {lastResult && (
-        <div className="bg-[#FBF3E4] border border-[#E3C896] rounded-sm p-5 mb-6 text-center">
-          <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-1">Code à remettre sur le reçu</p>
-          <p className="text-3xl font-serif text-[#1B2A4A] tracking-wider">{lastResult.code_unique}</p>
-          <p className="text-xs text-[#8A857A] mt-1">{lastResult.nom_complet}</p>
-        </div>
+      {/* ===== VUE ANNÉE (aucun mois sélectionné) ===== */}
+      {month === null && (
+        <>
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {anneesDisponibles.map((a) => (
+              <button
+                key={a}
+                onClick={() => setYear(a)}
+                className="text-sm px-3 py-1.5 rounded-sm border"
+                style={a === year ? { background: "#1B2A4A", color: "white", borderColor: "#1B2A4A" } : { borderColor: "#D8D0BC" }}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+          <SummaryCards t={tYear} label={`Total cumulé ${year}`} />
+          <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-3 mt-8">Détail par mois</p>
+          <div className="space-y-2">
+            {moisDuYear.map(([mm, list]) => {
+              const t = totals(list);
+              return (
+                <button
+                  key={mm}
+                  onClick={() => setMonth(mm)}
+                  className="card-hover w-full text-left bg-white border border-[#E3DCC8] rounded-sm p-4 flex items-center justify-between"
+                >
+                  <span className="text-sm font-medium">{MOIS_FR[mm - 1]}</span>
+                  <span className="text-xs text-[#5B584F]">
+                    <span className="text-[#5B7553]">+{money(t.entrees)}</span>{"  "}
+                    <span className="text-[#A8332B]">-{money(t.sorties)}</span>
+                  </span>
+                </button>
+              );
+            })}
+            {moisDuYear.length === 0 && <p className="text-sm text-[#8A857A]">Aucun mouvement en {year}.</p>}
+          </div>
+        </>
       )}
 
-      <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-3">Mouvements récents</p>
-      <div className="space-y-2">
-        {mouvements.map((m) => (
-          <div key={m.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-3 flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <p className="text-sm font-medium">
-                {m.personnes?.nom_complet || "—"}
-                {m.personnes?.code_unique && <span className="text-xs text-[#B8862E]"> · {m.personnes.code_unique}</span>}
-              </p>
-              <p className="text-xs text-[#8A857A]">{m.raison} {m.services?.name ? `· ${m.services.name}` : ""}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className={`text-sm font-medium ${m.type === "entree" ? "text-[#5B7553]" : "text-[#A8332B]"}`}>
-                {m.type === "entree" ? "+" : "-"}{Number(m.montant).toLocaleString("fr-FR")} G
-              </p>
-              <p className="text-[10px] text-[#8A857A]">{frDateTime(m.created_at)}</p>
-            </div>
+      {/* ===== VUE MOIS (mois choisi, aucun jour) ===== */}
+      {month !== null && day === null && (
+        <>
+          <SummaryCards t={tMonth} label={`Total cumulé — ${MOIS_FR[month - 1]} ${year}`} />
+          <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-3 mt-8">Détail par jour</p>
+          <div className="space-y-2">
+            {joursDuMois.map(([dd, list]) => {
+              const t = totals(list);
+              return (
+                <button
+                  key={dd}
+                  onClick={() => setDay(dd)}
+                  className="card-hover w-full text-left bg-white border border-[#E3DCC8] rounded-sm p-4 flex items-center justify-between"
+                >
+                  <span className="text-sm font-medium">{String(dd).padStart(2, "0")} {MOIS_FR[month - 1]}</span>
+                  <span className="text-xs text-[#5B584F]">
+                    <span className="text-[#5B7553]">+{money(t.entrees)}</span>{"  "}
+                    <span className="text-[#A8332B]">-{money(t.sorties)}</span>
+                  </span>
+                </button>
+              );
+            })}
+            {joursDuMois.length === 0 && <p className="text-sm text-[#8A857A]">Aucun mouvement ce mois-ci.</p>}
           </div>
-        ))}
-        {mouvements.length === 0 && <p className="text-sm text-[#8A857A]">Aucun mouvement enregistré.</p>}
-      </div>
+        </>
+      )}
+
+      {/* ===== VUE JOUR (rapport journalier) ===== */}
+      {day !== null && (
+        <>
+          {lastResult && (
+            <div className="bg-[#FBF3E4] border border-[#E3C896] rounded-sm p-5 mb-6 text-center">
+              <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-1">Code à remettre sur le reçu</p>
+              <p className="text-3xl font-serif text-[#1B2A4A] tracking-wider">{lastResult.code_unique}</p>
+              <p className="text-xs text-[#8A857A] mt-1">{lastResult.nom_complet}</p>
+            </div>
+          )}
+          <SummaryCards t={tDay} label={`Rapport journalier — ${String(day).padStart(2, "0")} ${MOIS_FR[month - 1]} ${year}`} />
+          <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-3 mt-8">Mouvements du jour</p>
+          <div className="space-y-2">
+            {parDay
+              .slice()
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              .map((m) => (
+                <div key={m.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {m.personnes?.nom_complet || "—"}
+                      {m.personnes?.code_unique && <span className="text-xs text-[#B8862E]"> · {m.personnes.code_unique}</span>}
+                    </p>
+                    <p className="text-xs text-[#8A857A]">{m.raison} {m.services?.name ? `· ${m.services.name}` : ""}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-sm font-medium ${m.type === "entree" ? "text-[#5B7553]" : "text-[#A8332B]"}`}>
+                      {m.type === "entree" ? "+" : "-"}{money(m.montant)}
+                    </p>
+                    <p className="text-[10px] text-[#8A857A]">{frTime(m.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            {parDay.length === 0 && <p className="text-sm text-[#8A857A]">Aucun mouvement ce jour-là.</p>}
+          </div>
+        </>
+      )}
 
       {showNew && (
         <NewMouvementModal
@@ -93,10 +254,33 @@ export default function CaissePage() {
           onSaved={(result) => {
             setShowNew(false);
             setLastResult(result);
+            goToday();
             load();
           }}
         />
       )}
+    </div>
+  );
+}
+
+function SummaryCards({ t, label }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-3">{label}</p>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <div className="bg-white border border-[#E3DCC8] rounded-sm p-5">
+          <p className="text-xs uppercase tracking-wide text-[#5B7553] mb-1">Entrées</p>
+          <p className="text-xl font-serif text-[#1B2A4A]">{money(t.entrees)}</p>
+        </div>
+        <div className="bg-white border border-[#E3DCC8] rounded-sm p-5">
+          <p className="text-xs uppercase tracking-wide text-[#A8332B] mb-1">Sorties</p>
+          <p className="text-xl font-serif text-[#1B2A4A]">{money(t.sorties)}</p>
+        </div>
+        <div className="bg-white border border-[#E3DCC8] rounded-sm p-5">
+          <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-1">Solde</p>
+          <p className="text-xl font-serif text-[#1B2A4A]">{money(t.solde)}</p>
+        </div>
+      </div>
     </div>
   );
 }
