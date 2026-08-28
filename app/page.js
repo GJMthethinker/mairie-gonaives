@@ -120,7 +120,7 @@ export default function HomePage() {
 
       <section className="relative overflow-hidden text-[#F7F4E6] py-24 px-6 text-center">
         <div
-          className="absolute inset-0 w-full h-full bg-cover bg-center"
+          className="absolute inset-0 w-full h-full bg-cover bg-[center_12%]"
           style={{ backgroundImage: "url('/mairie-facade.jpg')" }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#022E17]/92 via-[#034E28]/85 to-[#034E28]/95" />
