@@ -120,29 +120,47 @@ export default function HomePage() {
 
       <section className="relative overflow-hidden text-[#F7F4E6] py-24 px-6 text-center">
         <div
-          className="absolute inset-0 w-full h-full bg-cover bg-[center_12%]"
-          style={{ backgroundImage: "url('/mairie-facade.jpg')" }}
+          className="absolute inset-0 w-full h-full bg-cover bg-[25%_42%]"
+          style={{ backgroundImage: "url('/mairie-boulevard.jpg')" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#022E17]/92 via-[#034E28]/85 to-[#034E28]/95" />
+        <div className="absolute inset-0 bg-[#022E17]/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#022E17]/85 via-[#022E17]/70 to-[#034E28]/95" />
         <img
           src="/palmiste.jpg"
           alt=""
           aria-hidden="true"
-          className="float-slow pointer-events-none select-none absolute -right-14 -top-8 w-[300px] opacity-[0.16] md:w-[380px]"
+          className="float-slow pointer-events-none select-none absolute -right-14 -top-8 w-[300px] opacity-[0.12] md:w-[380px]"
         />
         <div className="relative">
           {mounted && (
-            <p className="hero-in text-[11px] uppercase tracking-[0.22em] text-[#F5E600] mb-4">
+            <div
+              className="hero-seal relative w-[112px] h-[112px] mx-auto mb-6 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ boxShadow: "0 0 0 3px #F5E600, 0 18px 40px -12px rgba(0,0,0,0.55)" }}
+            >
+              <img src="/logo-mairie.jpg" alt="" className="w-full h-full object-cover" />
+            </div>
+          )}
+          {mounted && (
+            <p
+              className="hero-in text-[11px] uppercase tracking-[0.22em] text-[#F5E600] mb-4"
+              style={{ textShadow: "0 2px 10px rgba(0,0,0,0.65)" }}
+            >
               An {independenceYear}ème de l'Indépendance · Gonaïves, Artibonite
             </p>
           )}
           {mounted && (
-            <h1 className="hero-in font-display text-3xl md:text-5xl mb-4" style={{ animationDelay: "80ms" }}>
+            <h1
+              className="hero-in font-display font-semibold text-3xl md:text-5xl mb-4 text-white"
+              style={{ animationDelay: "80ms", textShadow: "0 4px 18px rgba(0,0,0,0.65)" }}
+            >
               Bienvenue à la Mairie des Gonaïves
             </h1>
           )}
           {mounted && (
-            <p className="hero-in text-[#DCE6DD] max-w-xl mx-auto" style={{ animationDelay: "160ms" }}>
+            <p
+              className="hero-in text-[#EDEFE6] max-w-xl mx-auto"
+              style={{ animationDelay: "160ms", textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}
+            >
               Suivez nos actualités, prenez rendez-vous avec un responsable, ou faites-nous part de vos doléances et suggestions.
             </p>
           )}
