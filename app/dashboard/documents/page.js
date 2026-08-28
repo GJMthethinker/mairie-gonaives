@@ -26,10 +26,12 @@ function findValueByLabel(fields, values, patterns) {
 export default function DocumentsPage() {
   const { profile, services, isAdmin } = useApp();
   const [templates, setTemplates] = useState([]);
+  const [allowedIds, setAllowedIds] = useState(new Set());
   const [activeTemplate, setActiveTemplate] = useState(null);
   const [values, setValues] = useState({});
   const [generated, setGenerated] = useState(null);
   const [showNewTemplate, setShowNewTemplate] = useState(false);
+  const [manageAccessTemplate, setManageAccessTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openingArchived, setOpeningArchived] = useState(false);
   const [fillError, setFillError] = useState("");
@@ -38,6 +40,10 @@ export default function DocumentsPage() {
   async function loadTemplates() {
     const { data } = await supabase.from("templates").select("*, services(name, code)").order("name");
     setTemplates(data || []);
+    if (!isAdmin) {
+      const { data: perms } = await supabase.from("template_permissions").select("template_id").eq("user_id", profile.id);
+      setAllowedIds(new Set((perms || []).map((p) => p.template_id)));
+    }
     setLoading(false);
   }
 
@@ -176,7 +182,7 @@ export default function DocumentsPage() {
     loadTemplates();
   }
 
-  const visible = isAdmin ? templates : templates.filter((t) => t.service_id === profile.service_id);
+  const visible = isAdmin ? templates : templates.filter((t) => allowedIds.has(t.id));
 
   if (loading) return <p className="text-sm text-[#8A857A]">Chargement…</p>;
 
@@ -206,17 +212,27 @@ export default function DocumentsPage() {
                 )}
               </button>
               {isAdmin && (
-                <button
-                  onClick={() => handleDeleteTemplate(t.id)}
-                  className="text-[11px] text-[#A8332B] mt-3 hover:underline"
-                >
-                  Supprimer le modèle
-                </button>
+                <div className="flex items-center gap-3 mt-3">
+                  <button
+                    onClick={() => setManageAccessTemplate(t)}
+                    className="text-[11px] text-[#1B2A4A] hover:underline"
+                  >
+                    Gérer les accès
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTemplate(t.id)}
+                    className="text-[11px] text-[#A8332B] hover:underline"
+                  >
+                    Supprimer le modèle
+                  </button>
+                </div>
               )}
             </div>
           ))}
           {visible.length === 0 && (
-            <p className="text-sm text-[#8A857A]">Aucun modèle disponible pour votre service.</p>
+            <p className="text-sm text-[#8A857A]">
+              {isAdmin ? "Aucun modèle créé pour le moment." : "Aucun document ne vous a été autorisé pour le moment. Contactez le super administrateur."}
+            </p>
           )}
         </div>
       )}
@@ -318,6 +334,13 @@ export default function DocumentsPage() {
             setShowNewTemplate(false);
             loadTemplates();
           }}
+        />
+      )}
+
+      {manageAccessTemplate && (
+        <ManageAccessModal
+          template={manageAccessTemplate}
+          onClose={() => setManageAccessTemplate(null)}
         />
       )}
     </div>
@@ -563,6 +586,91 @@ function NewTemplateModal({ services, onClose, onSaved }) {
             {saving ? "Enregistrement..." : "Enregistrer le modèle"}
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ManageAccessModal({ template, onClose }) {
+  const [people, setPeople] = useState([]);
+  const [granted, setGranted] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, full_name, role, status, services(name)")
+        .eq("status", "approuve")
+        .neq("role", "superadmin")
+        .order("full_name");
+      const { data: perms } = await supabase
+        .from("template_permissions")
+        .select("user_id")
+        .eq("template_id", template.id);
+      setPeople(profs || []);
+      setGranted(new Set((perms || []).map((p) => p.user_id)));
+      setLoading(false);
+    }
+    load();
+  }, [template.id]);
+
+  async function toggle(userId) {
+    setBusyId(userId);
+    const isGranted = granted.has(userId);
+    if (isGranted) {
+      await supabase.from("template_permissions").delete().eq("template_id", template.id).eq("user_id", userId);
+    } else {
+      await supabase.from("template_permissions").insert({ template_id: template.id, user_id: userId });
+    }
+    setGranted((prev) => {
+      const next = new Set(prev);
+      if (isGranted) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+    setBusyId(null);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-sm w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-serif text-lg text-[#1B2A4A]">Accès — {template.name}</h3>
+          <button onClick={onClose}>✕</button>
+        </div>
+        <p className="text-xs text-[#8A857A] mb-4">
+          Cochez les employés autorisés à générer ce document. Ce modèle apparaîtra sur leur tableau de bord.
+        </p>
+        {loading ? (
+          <p className="text-sm text-[#8A857A]">Chargement…</p>
+        ) : people.length === 0 ? (
+          <p className="text-sm text-[#8A857A]">Aucun employé approuvé pour le moment.</p>
+        ) : (
+          <div className="space-y-1">
+            {people.map((p) => (
+              <label
+                key={p.id}
+                className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-sm hover:bg-[#FBFAF6] text-sm"
+              >
+                <span>
+                  {p.full_name}
+                  <span className="text-xs text-[#8A857A]"> — {p.services?.name || "—"}</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={granted.has(p.id)}
+                  disabled={busyId === p.id}
+                  onChange={() => toggle(p.id)}
+                />
+              </label>
+            ))}
+          </div>
+        )}
+        <button onClick={onClose} className="w-full mt-5 border border-[#D8D0BC] rounded-sm px-4 py-2 text-sm">
+          Fermer
+        </button>
       </div>
     </div>
   );
