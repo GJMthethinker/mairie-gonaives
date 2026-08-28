@@ -1,18 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import jsQR from "jsqr";
 
 function frDateTime(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// Extrait le code d'un texte scanné : soit un lien /verifier?code=XXX, soit le code brut.
+function extractCode(text) {
+  try {
+    const url = new URL(text);
+    const fromParam = url.searchParams.get("code");
+    if (fromParam) return fromParam;
+  } catch {
+    // ce n'est pas une URL, on suppose que c'est le code lui-même
+  }
+  return text.trim();
+}
+
 export default function VerifierPage() {
   const [code, setCode] = useState("");
-  const [result, setResult] = useState(null); // null = pas encore cherché
+  const [result, setResult] = useState(null);
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState("");
+
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const rafRef = useRef(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -21,6 +41,10 @@ export default function VerifierPage() {
       setCode(c);
       verify(c);
     }
+  }, []);
+
+  useEffect(() => {
+    return () => stopScan();
   }, []);
 
   async function verify(c) {
@@ -42,6 +66,52 @@ export default function VerifierPage() {
     verify(code);
   }
 
+  async function startScan() {
+    setScanError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      streamRef.current = stream;
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
+      setScanning(true);
+      tick();
+    } catch (e) {
+      setScanError("Impossible d'accéder à la caméra : " + e.message);
+    }
+  }
+
+  function stopScan() {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setScanning(false);
+  }
+
+  function tick() {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      rafRef.current = requestAnimationFrame(tick);
+      return;
+    }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const qr = jsQR(imageData.data, imageData.width, imageData.height);
+    if (qr && qr.data) {
+      const extracted = extractCode(qr.data);
+      stopScan();
+      setCode(extracted);
+      verify(extracted);
+      return;
+    }
+    rafRef.current = requestAnimationFrame(tick);
+  }
+
   return (
     <div className="min-h-screen bg-[var(--cream)] text-[var(--ink)] flex flex-col">
       <header className="bg-[#034E28] text-white border-b-4 border-[#F5E600]">
@@ -57,8 +127,44 @@ export default function VerifierPage() {
       <main className="flex-1 max-w-lg w-full mx-auto px-6 py-12">
         <p className="text-sm text-[var(--ink-muted)] mb-6">
           Vérifiez l'authenticité d'un document émis par la Mairie des Gonaïves à partir du code inscrit dessus,
-          ou en scannant son QR code.
+          ou en scannant son QR code directement avec votre appareil.
         </p>
+
+        {!scanning && (
+          <button
+            type="button"
+            onClick={startScan}
+            className="btn-press w-full mb-4 flex items-center justify-center gap-2 bg-[#1B2A4A] text-white rounded-sm px-4 py-3 text-sm font-medium"
+          >
+            📷 Scanner un QR code avec la caméra
+          </button>
+        )}
+
+        {scanning && (
+          <div className="mb-4">
+            <div className="relative rounded-sm overflow-hidden border-2 border-[#034E28] bg-black">
+              <video ref={videoRef} className="w-full aspect-square object-cover" playsInline muted />
+              <div className="absolute inset-8 border-2 border-[#F5E600] rounded-sm pointer-events-none" />
+            </div>
+            <canvas ref={canvasRef} className="hidden" />
+            <button
+              type="button"
+              onClick={stopScan}
+              className="btn-press w-full mt-2 border border-[var(--line)] rounded-sm px-4 py-2 text-sm"
+            >
+              Arrêter le scan
+            </button>
+            <p className="text-xs text-[var(--ink-muted)] text-center mt-2">Visez le QR code du document.</p>
+          </div>
+        )}
+
+        {scanError && <p className="text-xs text-[#A8332B] mb-4">{scanError}</p>}
+
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-[var(--line)]" />
+          <p className="text-xs text-[var(--ink-muted)] uppercase tracking-wide">ou</p>
+          <div className="flex-1 h-px bg-[var(--line)]" />
+        </div>
 
         <form onSubmit={submit} className="flex gap-2 mb-8">
           <input
