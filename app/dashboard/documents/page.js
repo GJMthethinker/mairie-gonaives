@@ -71,6 +71,9 @@ export default function DocumentsPage() {
       if (tmpl) {
         setActiveTemplate(tmpl);
         setGenerated(doc);
+        if (doc.code_verification) {
+          await buildAndShowQr(doc.code_verification);
+        }
       }
       setOpeningArchived(false);
     }
