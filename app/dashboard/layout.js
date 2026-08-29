@@ -152,7 +152,7 @@ export default function DashboardLayout({ children }) {
     ...(isAdmin ? [{ href: "/dashboard", label: "Tableau de bord" }] : []),
     { href: "/dashboard/documents", label: "Documents" },
     ...(isAdmin || profile.services?.code === "ACC" ? [{ href: "/dashboard/accueil", label: "Accueil" }] : []),
-    ...(isAdmin || profile.services?.code === "CAI" ? [{ href: "/dashboard/caisse", label: "Caisse" }] : []),
+    ...(isAdmin || ["CAI", "DA", "CPY"].includes(profile.services?.code) ? [{ href: "/dashboard/caisse", label: "Caisse" }] : []),
     { href: "/dashboard/registre", label: "Registre" },
     { href: "/dashboard/archives", label: "Archives" },
     { href: "/dashboard/residents", label: "Résidents" },
