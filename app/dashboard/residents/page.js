@@ -1,77 +1,164 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 function frDate(iso) {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 export default function ResidentsPage() {
-  const [residents, setResidents] = useState([]);
+  const [personnes, setPersonnes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("residents").select("*, services(name)").order("created_at", { ascending: false });
-      setResidents(data || []);
+      const { data } = await supabase.from("personnes").select("*").order("nom_complet");
+      setPersonnes(data || []);
       setLoading(false);
     }
     load();
   }, []);
 
-  if (loading) return <p className="text-sm text-[#8A857A]">Chargement…</p>;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return personnes;
+    return personnes.filter(
+      (p) =>
+        p.nom_complet?.toLowerCase().includes(q) ||
+        p.code_unique?.includes(q) ||
+        p.nif?.includes(q) ||
+        p.ninu?.includes(q) ||
+        p.adresse?.toLowerCase().includes(q)
+    );
+  }, [personnes, search]);
 
-  const q = query.trim().toLowerCase();
-  const filtered = q
-    ? residents.filter(
-        (r) =>
-          r.full_name?.toLowerCase().includes(q) ||
-          r.address?.toLowerCase().includes(q) ||
-          r.phone?.toLowerCase().includes(q)
-      )
-    : residents;
+  if (loading) return <p className="text-sm text-[#8A857A]">Chargement…</p>;
 
   return (
     <div>
       <h2 className="font-serif text-2xl text-[#1B2A4A] mb-2">Registre des résidents</h2>
       <p className="text-xs text-[#8A857A] mb-6">
-        Constitué automatiquement à chaque certificat de résidence généré. Recherchez par nom, adresse ou téléphone.
+        {personnes.length} personne{personnes.length > 1 ? "s" : ""} connue{personnes.length > 1 ? "s" : ""} du système — alimenté automatiquement par la Caisse et les documents générés.
       </p>
 
       <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Rechercher un nom, une adresse, un numéro..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Rechercher par nom, code, NIF, NINU ou adresse…"
         className="w-full max-w-md border border-[#D8D0BC] rounded-sm px-3 py-2 text-sm mb-6"
       />
 
-      <div className="space-y-2">
-        {filtered.map((r) => (
-          <div key={r.id} className="card-hover bg-white border border-[#E3DCC8] rounded-sm p-4">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
-                <p className="font-medium text-sm">{r.full_name}</p>
-                <p className="text-xs text-[#5B584F] mt-1">{r.address || "Adresse non renseignée"}</p>
-                <p className="text-xs text-[#5B584F]">{r.phone || "Téléphone non renseigné"}</p>
-                {(r.birth_date || r.birth_place) && (
-                  <p className="text-[11px] text-[#8A857A] mt-1">
-                    Né(e) {r.birth_date ? `le ${r.birth_date}` : ""} {r.birth_place ? `à ${r.birth_place}` : ""}
-                  </p>
-                )}
-              </div>
-              <p className="text-[11px] text-[#B8862E] uppercase tracking-wide shrink-0">{frDate(r.created_at)}</p>
-            </div>
-          </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {filtered.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setSelected(p)}
+            className="card-hover text-left bg-white border border-[#E3DCC8] rounded-sm p-4"
+          >
+            <p className="text-sm font-medium">{p.nom_complet}</p>
+            <p className="text-xs text-[#B8862E] mt-0.5">{p.code_unique}</p>
+            {p.adresse && <p className="text-xs text-[#8A857A] mt-1">{p.adresse}</p>}
+          </button>
         ))}
-        {filtered.length === 0 && (
-          <p className="text-sm text-[#8A857A]">
-            {q ? "Aucun résultat pour cette recherche." : "Aucun résident enregistré pour le moment."}
-          </p>
+        {filtered.length === 0 && <p className="text-sm text-[#8A857A]">Aucune personne trouvée.</p>}
+      </div>
+
+      {selected && <PersonneDetail personne={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+function PersonneDetail({ personne, onClose }) {
+  const [documents, setDocuments] = useState([]);
+  const [mouvements, setMouvements] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const [{ data: docs }, { data: mvts }] = await Promise.all([
+        supabase
+          .from("documents")
+          .select("id, template_name, doc_number, code_verification, created_at, updated_at")
+          .eq("personne_id", personne.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("caisse_mouvements")
+          .select("id, type, montant, raison, created_at")
+          .eq("personne_id", personne.id)
+          .order("created_at", { ascending: false }),
+      ]);
+      setDocuments(docs || []);
+      setMouvements(mvts || []);
+      setLoading(false);
+    }
+    load();
+  }, [personne.id]);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-sm w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-serif text-lg text-[#1B2A4A]">{personne.nom_complet}</h3>
+            <p className="text-xs text-[#B8862E]">{personne.code_unique}</p>
+          </div>
+          <button onClick={onClose}>✕</button>
+        </div>
+
+        <dl className="space-y-1.5 text-sm mb-6">
+          {personne.nif && <Row label="NIF" value={personne.nif} />}
+          {personne.ninu && <Row label="NINU" value={personne.ninu} />}
+          {personne.adresse && <Row label="Adresse" value={personne.adresse} />}
+          {personne.telephone && <Row label="Téléphone" value={personne.telephone} />}
+          <Row label="Connu depuis" value={frDate(personne.created_at)} />
+        </dl>
+
+        {loading ? (
+          <p className="text-sm text-[#8A857A]">Chargement de l'historique…</p>
+        ) : (
+          <>
+            <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-2">Documents ({documents.length})</p>
+            <div className="space-y-1.5 mb-6">
+              {documents.map((d) => (
+                <div key={d.id} className="text-xs bg-[#FBFAF6] border border-[#E3DCC8] rounded-sm px-3 py-2">
+                  <p className="font-medium">{d.template_name} — {d.doc_number}</p>
+                  <p className="text-[#8A857A]">
+                    Code {d.code_verification} · {frDate(d.updated_at || d.created_at)}
+                    {d.updated_at && d.updated_at !== d.created_at ? " (mis à jour)" : ""}
+                  </p>
+                </div>
+              ))}
+              {documents.length === 0 && <p className="text-xs text-[#8A857A]">Aucun document.</p>}
+            </div>
+
+            <p className="text-xs uppercase tracking-wide text-[#8A857A] mb-2">Mouvements de caisse ({mouvements.length})</p>
+            <div className="space-y-1.5">
+              {mouvements.map((m) => (
+                <div key={m.id} className="text-xs bg-[#FBFAF6] border border-[#E3DCC8] rounded-sm px-3 py-2 flex items-center justify-between">
+                  <span>{m.raison}</span>
+                  <span className={m.type === "entree" ? "text-[#5B7553]" : "text-[#A8332B]"}>
+                    {m.type === "entree" ? "+" : "-"}{Number(m.montant).toLocaleString("fr-FR")} G
+                  </span>
+                </div>
+              ))}
+              {mouvements.length === 0 && <p className="text-xs text-[#8A857A]">Aucun mouvement.</p>}
+            </div>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-[#E3DCC8] pb-1">
+      <dt className="text-[#8A857A]">{label}</dt>
+      <dd className="font-medium text-right">{value}</dd>
     </div>
   );
 }
