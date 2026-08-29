@@ -206,3 +206,34 @@ h1, h2, h3, .font-display {
   .float-slow, .hero-in, .dash-in, .stagger-in, .pop-in, .glow-gold { animation: none !important; }
   .card-hover, .card-hover:hover, .img-zoom img, .img-zoom:hover img { transition: none; transform: none; }
 }
+
+/* ===================================================================
+   IMPRESSION DES DOCUMENTS — isole le document (en-tête/pied de page
+   répétés automatiquement sur chaque feuille par le navigateur, corps
+   qui s'écoule librement, sans limite de nombre de pages).
+   =================================================================== */
+@page {
+  size: letter;
+  margin: 0.6in 0.5in;
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  #certificate-paper {
+    width: 100% !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}
