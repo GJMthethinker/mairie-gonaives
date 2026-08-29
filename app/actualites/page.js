@@ -62,11 +62,11 @@ export default function ActualitesPubliquePage() {
               <button
                 key={n.id}
                 onClick={() => n.image_url && setLightbox({ src: n.image_url, alt: n.title })}
-                className="card-hover text-left rounded-sm overflow-hidden p-4"
+                className="card-hover text-left rounded-3xl overflow-hidden p-4"
                 style={{ background: "#034E28" }}
               >
                 {n.image_url && (
-                  <div className="img-zoom overflow-hidden rounded-sm mb-4">
+                  <div className="img-zoom overflow-hidden rounded-2xl mb-4">
                     <img src={n.image_url} alt={n.title} className="w-full h-48 object-cover" />
                   </div>
                 )}
