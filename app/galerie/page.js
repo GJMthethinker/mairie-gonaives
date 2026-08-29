@@ -57,14 +57,18 @@ export default function GaleriePubliquePage() {
         ) : photos.length === 0 ? (
           <p className="text-sm text-[var(--ink-muted)]">Aucune photo pour le moment.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {photos.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setLightbox(p)}
-                className="img-zoom overflow-hidden rounded-sm border border-[var(--line)] aspect-[4/5] card-hover text-left"
+                className="card-hover text-left rounded-3xl overflow-hidden p-3"
+                style={{ background: "#034E28" }}
               >
-                <img src={p.image_url} alt={p.caption || ""} className="w-full h-full object-cover" />
+                <div className="img-zoom overflow-hidden rounded-2xl aspect-[4/5]">
+                  <img src={p.image_url} alt={p.caption || ""} className="w-full h-full object-cover" />
+                </div>
+                {p.caption && <p className="text-[11px] text-white font-medium mt-2 px-1 truncate">{p.caption}</p>}
               </button>
             ))}
           </div>
