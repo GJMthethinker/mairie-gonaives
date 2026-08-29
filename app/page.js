@@ -73,9 +73,9 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <a
               href="/verifier"
-              className="btn-press text-xs sm:text-sm text-[#F5E600]/90 hover:text-[#F5E600] underline-offset-2 hover:underline"
+              className="btn-press text-xs sm:text-sm bg-[#F5E600] text-[#034E28] font-semibold rounded-full px-4 py-2 flex items-center gap-1.5 hover:brightness-105 transition-all"
             >
-              Vérifier un document
+              ✓ Vérifier un document
             </a>
             <a
               href="/login"
@@ -152,14 +152,13 @@ export default function HomePage() {
               <button
                 key={img.id || i}
                 onClick={() => setLightbox({ src: img.image_url, alt: img.caption || "" })}
-                className="stagger-in card-hover text-left rounded-3xl overflow-hidden p-3"
-                style={{ background: "#034E28" }}
+                className="stagger-in card-hover text-left rounded-3xl overflow-hidden p-2 bg-white border border-[var(--line)]"
               >
                 <div className="img-zoom overflow-hidden rounded-2xl aspect-[4/5]">
                   <img src={img.image_url} alt={img.caption || ""} className="w-full h-full object-cover" />
                 </div>
                 {img.caption && (
-                  <p className="text-[11px] text-white font-medium mt-2 px-1 truncate">{img.caption}</p>
+                  <p className="text-[11px] text-[var(--ink)] font-medium mt-2 px-1 truncate">{img.caption}</p>
                 )}
               </button>
             ))}
@@ -257,8 +256,11 @@ export default function HomePage() {
         <p className="font-display text-lg text-white mb-1">Mairie des Gonaïves</p>
         <p className="text-sm text-[#DCE6DD]">Artibonite, Haïti (W.I)</p>
         <div className="mx-auto mt-6 h-px w-20 bg-gradient-to-r from-transparent via-[#F5E600] to-transparent" />
-        <a href="/verifier" className="inline-block mt-6 text-sm text-[#F5E600] hover:underline">
-          Vérifier l'authenticité d'un document
+        <a
+          href="/verifier"
+          className="btn-press inline-flex items-center gap-2 mt-6 bg-[#F5E600] text-[#034E28] font-semibold text-sm rounded-full px-6 py-3 hover:brightness-105 transition-all"
+        >
+          ✓ Vérifier l'authenticité d'un document
         </a>
       </footer>
     </div>
