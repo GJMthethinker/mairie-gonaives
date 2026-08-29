@@ -17,6 +17,8 @@ export default function EmployesPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [notifyTarget, setNotifyTarget] = useState(null);
+  const [showNewEmployee, setShowNewEmployee] = useState(false);
+  const [lastCreated, setLastCreated] = useState(null);
   const [savingService, setSavingService] = useState(null);
 
   async function load() {
@@ -64,7 +66,25 @@ export default function EmployesPage() {
 
   return (
     <div>
-      <h2 className="font-display text-2xl text-[#034E28] mb-6">Employés</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-display text-2xl text-[#034E28]">Employés</h2>
+        <button
+          onClick={() => { setShowNewEmployee(true); setLastCreated(null); }}
+          className="btn-press text-sm bg-[#034E28] text-white px-4 py-2 rounded-sm"
+        >
+          + Créer un employé
+        </button>
+      </div>
+
+      {lastCreated && (
+        <div className="bg-[#FBF3E4] border border-[#E3C896] rounded-sm p-5 mb-6">
+          <p className="text-sm font-medium mb-1">Compte créé pour {lastCreated.full_name}</p>
+          <p className="text-xs text-[#8A857A] mb-2">
+            Remettez cet identifiant en main propre — il ne sera plus jamais réaffiché ici.
+          </p>
+          <p className="text-2xl font-serif text-[#1B2A4A] tracking-widest">{lastCreated.code}</p>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="mb-8">
@@ -152,6 +172,17 @@ export default function EmployesPage() {
       </div>
 
       {notifyTarget && <NotifyModal target={notifyTarget} onClose={() => setNotifyTarget(null)} />}
+      {showNewEmployee && (
+        <NewEmployeeModal
+          services={services}
+          onClose={() => setShowNewEmployee(false)}
+          onCreated={(created) => {
+            setShowNewEmployee(false);
+            setLastCreated(created);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -219,6 +250,70 @@ function NotifyModal({ target, onClose }) {
             </button>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+function NewEmployeeModal({ services, onClose, onCreated }) {
+  const [fullName, setFullName] = useState("");
+  const [serviceId, setServiceId] = useState(services[0]?.id || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!fullName.trim() || !serviceId) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/create-employee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: fullName.trim(), service_id: serviceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur inconnue");
+      onCreated({ full_name: fullName.trim(), code: data.code });
+    } catch (err) {
+      setError(err.message);
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-sm w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg text-[#034E28]">Créer un employé</h3>
+          <button onClick={onClose}>✕</button>
+        </div>
+        <form onSubmit={submit} className="space-y-3">
+          <input
+            required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Nom complet"
+            className="w-full border border-[var(--line)] rounded-sm px-3 py-2 text-sm"
+          />
+          <select
+            value={serviceId}
+            onChange={(e) => setServiceId(e.target.value)}
+            className="w-full border border-[var(--line)] rounded-sm px-3 py-2 text-sm"
+          >
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          {error && <p className="text-xs text-[#A8332B]">{error}</p>}
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn-press w-full bg-[#034E28] text-white rounded-sm px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+          >
+            {saving ? "Création..." : "Créer le compte"}
+          </button>
+        </form>
       </div>
     </div>
   );
