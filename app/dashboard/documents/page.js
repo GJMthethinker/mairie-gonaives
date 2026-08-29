@@ -308,7 +308,11 @@ export default function DocumentsPage() {
 
   async function handleDeleteTemplate(id) {
     if (!confirm("Supprimer ce modèle ?")) return;
-    await supabase.from("templates").delete().eq("id", id);
+    const { error } = await supabase.from("templates").delete().eq("id", id);
+    if (error) {
+      alert("Erreur lors de la suppression : " + error.message);
+      return;
+    }
     loadTemplates();
   }
 
