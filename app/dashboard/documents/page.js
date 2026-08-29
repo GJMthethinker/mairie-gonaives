@@ -525,60 +525,82 @@ function DocumentPreview({ template, doc, qrDataUrl }) {
   return (
     <div
       id="certificate-paper"
-      className="bg-white text-black mx-auto shadow-sm flex flex-col"
+      className="bg-white text-black mx-auto shadow-sm"
       style={{
         fontFamily: "'Times New Roman', Times, serif",
         width: "8.5in",
-        height: "11in",
         padding: "0.75in 1in",
         boxSizing: "border-box",
       }}
     >
-      <div className="flex items-start justify-between shrink-0">
-        <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
-        <div className="text-center flex-1 px-2">
-          <img src="/palmiste.jpg" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
-          <p className="italic text-sm mt-1">Liberté • Égalité • Fraternité</p>
-          <p className="font-bold text-lg mt-1">RÉPUBLIQUE D'HAÏTI</p>
-          <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
-          <p className="font-bold text-lg mt-1">MAIRIE DES GONAÏVES</p>
-        </div>
-        <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
-      </div>
+      {/* Table exploitée uniquement pour son comportement d'impression :
+          l'en-tête (thead) et le bas de page (tfoot) se répètent automatiquement
+          sur chaque page si le document en compte plusieurs ; le corps (tbody)
+          s'écoule librement d'une page à l'autre, sans être jamais coupé. */}
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <td style={{ paddingBottom: "0.35in" }}>
+              <div className="flex items-start justify-between">
+                <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
+                <div className="text-center flex-1 px-2">
+                  <img src="/palmiste.jpg" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
+                  <p className="italic text-sm mt-1">Liberté • Égalité • Fraternité</p>
+                  <p className="font-bold text-lg mt-1">RÉPUBLIQUE D'HAÏTI</p>
+                  <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
+                  <p className="font-bold text-lg mt-1">MAIRIE DES GONAÏVES</p>
+                </div>
+                <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
+              </div>
+            </td>
+          </tr>
+        </thead>
 
-      <p className="text-right italic text-sm mt-6 shrink-0">Réf : {doc.doc_number}</p>
+        <tfoot>
+          <tr>
+            <td style={{ paddingTop: "0.25in" }}>
+              <div className="pt-2 border-t border-black text-center text-[10px]">
+                Mairie des Gonaïves, Artibonite, Haïti (W.I)
+              </div>
+            </td>
+          </tr>
+        </tfoot>
 
-      <h3 className="text-center font-bold underline text-base mt-4 mb-8 shrink-0">{template.name.toUpperCase()}</h3>
+        <tbody>
+          <tr>
+            <td>
+              <p className="text-right italic text-sm mb-2">Réf : {doc.doc_number}</p>
 
-      <div className="flex-1">
-        <p className="whitespace-pre-line leading-relaxed text-[15px] text-justify">{body}</p>
-      </div>
+              <h3 className="text-center font-bold underline text-base mb-8">{template.name.toUpperCase()}</h3>
 
-      <div className="shrink-0">
-        <p className="text-[15px]">
-          Gonaïves, le {frDate(doc.created_at)}, An {independenceYear}ème de l'Indépendance.
-        </p>
+              <p className="whitespace-pre-line leading-relaxed text-[15px] text-justify">{body}</p>
 
-        <div className="mt-8 text-right text-[15px]">
-          <p>Pour la Commission Municipale,</p>
-          <p className="mt-12">_____________________________</p>
-          <p>{template.signatory || "Signature autorisée"}</p>
-        </div>
+              <p className="text-[15px] mt-8">
+                Gonaïves, le {frDate(doc.created_at)}, An {independenceYear}ème de l'Indépendance.
+              </p>
 
-        <div className="mt-10 pt-3 border-t border-black flex items-center gap-3">
-          {qrDataUrl && (
-            <div className="shrink-0 text-center">
-              <img src={qrDataUrl} alt="QR de vérification" style={{ width: "0.75in", height: "0.75in" }} />
-              <p style={{ fontSize: "7px" }}>{doc.code_verification}</p>
-            </div>
-          )}
-          <div className="flex-1 text-center text-xs">
-            <p>Mairie des Gonaïves, Artibonite, Haïti (W.I)</p>
-            <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
-            {qrDataUrl && <p className="text-[10px] mt-0.5">Vérifiez ce document sur mairie-gonaives-m7ya.vercel.app/verifier</p>}
-          </div>
-        </div>
-      </div>
+              <div className="mt-8 text-right text-[15px]">
+                <p>Pour la Commission Municipale,</p>
+                <p className="mt-12">_____________________________</p>
+                <p>{template.signatory || "Signature autorisée"}</p>
+              </div>
+
+              <div className="mt-10 pt-3 border-t border-black flex items-center gap-3">
+                {qrDataUrl && (
+                  <div className="shrink-0 text-center">
+                    <img src={qrDataUrl} alt="QR de vérification" style={{ width: "0.75in", height: "0.75in" }} />
+                    <p style={{ fontSize: "7px" }}>{doc.code_verification}</p>
+                  </div>
+                )}
+                <div className="flex-1 text-center text-xs">
+                  <p>Adresse : #117, Angles rues Fabre Geffrard et Clerveau, Gonaïves, Haïti (W.I)</p>
+                  {qrDataUrl && <p className="text-[10px] mt-0.5">Vérifiez ce document sur mairie-gonaives-m7ya.vercel.app/verifier</p>}
+                </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
