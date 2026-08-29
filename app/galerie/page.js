@@ -62,13 +62,12 @@ export default function GaleriePubliquePage() {
               <button
                 key={p.id}
                 onClick={() => setLightbox(p)}
-                className="card-hover text-left rounded-3xl overflow-hidden p-3"
-                style={{ background: "#034E28" }}
+                className="card-hover text-left rounded-3xl overflow-hidden p-2 bg-white border border-[var(--line)]"
               >
                 <div className="img-zoom overflow-hidden rounded-2xl aspect-[4/5]">
                   <img src={p.image_url} alt={p.caption || ""} className="w-full h-full object-cover" />
                 </div>
-                {p.caption && <p className="text-[11px] text-white font-medium mt-2 px-1 truncate">{p.caption}</p>}
+                {p.caption && <p className="text-[11px] text-[var(--ink)] font-medium mt-2 px-1 truncate">{p.caption}</p>}
               </button>
             ))}
           </div>
