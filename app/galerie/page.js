@@ -85,8 +85,10 @@ export default function GaleriePubliquePage() {
         </div>
       )}
 
-      <footer className="text-center text-xs text-[var(--ink-muted)] py-10 border-t border-[var(--line)] mt-8">
-        Mairie des Gonaïves, Artibonite, Haïti (W.I)
+      <footer className="bg-[#034E28] border-t-4 border-[#F5E600] text-center py-12 mt-8">
+        <img src="/logo-mairie.jpg" alt="Mairie des Gonaïves" className="w-14 h-14 rounded-full object-cover ring-2 ring-[#F5E600] mx-auto mb-4" />
+        <p className="font-display text-lg text-white mb-1">Mairie des Gonaïves</p>
+        <p className="text-sm text-[#DCE6DD]">Artibonite, Haïti (W.I)</p>
       </footer>
     </div>
   );
