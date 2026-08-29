@@ -509,7 +509,7 @@ function DocumentPreview({ template, doc, qrDataUrl }) {
       <div className="flex items-start justify-between shrink-0">
         <img src="/logo-mairie.jpg" alt="Logo Mairie des Gonaïves" style={{ height: "1.1in", width: "auto" }} />
         <div className="text-center flex-1 px-2">
-          <img src="/palmiste.jpg.jpg" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
+          <img src="/palmiste.jpg" alt="Armoiries d'Haïti" style={{ height: "0.9in", width: "auto", margin: "0 auto" }} />
           <p className="italic text-sm mt-1">Liberté • Égalité • Fraternité</p>
           <p className="font-bold text-lg mt-1">RÉPUBLIQUE D'HAÏTI</p>
           <p className="text-sm">DÉPARTEMENT DE L'ARTIBONITE</p>
