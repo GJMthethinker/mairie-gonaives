@@ -292,7 +292,11 @@ export default function DocumentsPage() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setFillError("Erreur lors du remplissage du document : " + err.message);
+      const detail = err?.properties?.errors
+        ?.map((e) => e?.properties?.explanation || e?.message)
+        .filter(Boolean)
+        .join(" | ");
+      setFillError("Erreur lors du remplissage du document : " + (detail || err.message));
     }
     setDownloading(false);
   }
