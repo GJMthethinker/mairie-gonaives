@@ -57,20 +57,28 @@ export default function ActualitesPubliquePage() {
         ) : news.length === 0 ? (
           <p className="text-sm text-[var(--ink-muted)]">Aucune actualité publiée pour le moment.</p>
         ) : (
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-6">
             {news.map((n) => (
-              <div key={n.id} className="card-hover bg-white border border-[var(--line)] rounded-sm overflow-hidden">
+              <button
+                key={n.id}
+                onClick={() => n.image_url && setLightbox({ src: n.image_url, alt: n.title })}
+                className="card-hover text-left rounded-sm overflow-hidden p-4"
+                style={{ background: "#034E28" }}
+              >
                 {n.image_url && (
-                  <button onClick={() => setLightbox({ src: n.image_url, alt: n.title })} className="img-zoom block w-full h-44 overflow-hidden">
-                    <img src={n.image_url} alt={n.title} className="w-full h-full object-cover" />
-                  </button>
+                  <div className="img-zoom overflow-hidden rounded-sm mb-4">
+                    <img src={n.image_url} alt={n.title} className="w-full h-48 object-cover" />
+                  </div>
                 )}
-                <div className="p-5">
-                  <p className="text-[11px] text-[#8A7F00] uppercase tracking-wide mb-2">{frDate(n.published_at)}</p>
-                  <p className="font-medium mb-2">{n.title}</p>
-                  <p className="text-sm text-[var(--ink-muted)] whitespace-pre-line">{n.content}</p>
-                </div>
-              </div>
+                <p className="text-[11px] text-[#F5E600] uppercase tracking-[0.15em] font-bold mb-2">{frDate(n.published_at)}</p>
+                <p
+                  className="text-white uppercase leading-[1.15] mb-3"
+                  style={{ fontFamily: "'Public Sans', sans-serif", fontWeight: 800, fontSize: "1.3rem" }}
+                >
+                  {n.title}
+                </p>
+                <p className="text-sm text-[#D9E3D9] whitespace-pre-line leading-relaxed">{n.content}</p>
+              </button>
             ))}
           </div>
         )}
@@ -88,8 +96,10 @@ export default function ActualitesPubliquePage() {
         </div>
       )}
 
-      <footer className="text-center text-xs text-[var(--ink-muted)] py-10 border-t border-[var(--line)] mt-8">
-        Mairie des Gonaïves, Artibonite, Haïti (W.I)
+      <footer className="bg-[#034E28] border-t-4 border-[#F5E600] text-center py-12 mt-8">
+        <img src="/logo-mairie.jpg" alt="Mairie des Gonaïves" className="w-14 h-14 rounded-full object-cover ring-2 ring-[#F5E600] mx-auto mb-4" />
+        <p className="font-display text-lg text-white mb-1">Mairie des Gonaïves</p>
+        <p className="text-sm text-[#DCE6DD]">Artibonite, Haïti (W.I)</p>
       </footer>
     </div>
   );
