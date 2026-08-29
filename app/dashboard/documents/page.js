@@ -6,6 +6,7 @@ import { useApp } from "../layout";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import QRCode from "qrcode";
+import ImageModule from "docxtemplater-image-module-free";
 
 const fieldTypeLabel = { text: "Texte", textarea: "Texte long", date: "Date", number: "Nombre" };
 
@@ -17,6 +18,13 @@ function frDate(iso) {
     return new Date(y, m - 1, d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
   }
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+function base64ToArrayBuffer(dataUrl) {
+  const binary = atob(dataUrl.split(",")[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
 }
 
 function findValueByLabel(fields, values, patterns) {
@@ -250,13 +258,26 @@ export default function DocumentsPage() {
       if (!res.ok) throw new Error("Impossible de récupérer l'exemplaire du document.");
       const buf = await res.arrayBuffer();
       const zip = new PizZip(buf);
-      const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+
+      // Génère le QR (même code de vérification que celui déjà attribué au document)
+      const codeVerif = generated.code_verification || generated.doc_number;
+      const qrUrl = `${window.location.origin}/verifier?code=${encodeURIComponent(codeVerif)}`;
+      const qrDataUrlWord = await QRCode.toDataURL(qrUrl, { margin: 1, width: 300 });
+      const qrBuffer = base64ToArrayBuffer(qrDataUrlWord);
+
+      const imageModule = new ImageModule({
+        getImage: () => qrBuffer,
+        getSize: () => [90, 90],
+      });
+
+      const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, modules: [imageModule] });
       const data = {};
       (activeTemplate.fields || []).forEach((f) => {
         const raw = values[f.key];
         data[f.key] = f.type === "date" ? frDate(raw) : raw ?? "";
       });
       data["reference"] = generated.doc_number;
+      data["qrcode"] = "qr"; // valeur requise pour déclencher l'insertion de l'image {%qrcode}
       doc.render(data);
       const out = doc.getZip().generate({
         type: "blob",
@@ -418,14 +439,8 @@ export default function DocumentsPage() {
           <div className="bg-white border border-[#E3DCC8] rounded-sm p-6 text-center">
             <p className="font-serif text-lg text-[#1B2A4A] mb-2">Document créé</p>
             <p className="text-sm text-[#5B584F] mb-1">Référence : <strong>{generated.doc_number}</strong></p>
-            {qrDataUrl && (
-              <div className="my-4">
-                <img src={qrDataUrl} alt="QR code de vérification" className="mx-auto w-32 h-32" />
-                <p className="text-[11px] text-[#8A857A] mt-1">Code : {generated.code_verification}</p>
-                <p className="text-[10px] text-[#A8332B] mt-1">
-                  Ce modèle Word ne peut pas encore intégrer le QR code automatiquement — imprimez-le à part et joignez-le au document.
-                </p>
-              </div>
+            {generated.code_verification && (
+              <p className="text-[11px] text-[#8A857A] mt-1 mb-2">Code : {generated.code_verification}</p>
             )}
             <p className="text-xs text-[#8A857A] mb-5">
               Ce modèle utilise un exemplaire Word. Téléchargez le document rempli, prêt à imprimer.
@@ -699,6 +714,10 @@ function NewTemplateModal({ services, onClose, onSaved }) {
               Dans le fichier Word, écrivez <code>{"{{cle}}"}</code> à l'endroit exact où chaque information doit
               apparaître (la clé doit correspondre à celle affichée au-dessus). Ex : <code>{"{{nom_complet}}"}</code>.
               La référence du document est disponible via <code>{"{{reference}}"}</code>.
+            </p>
+            <p className="text-[11px] text-[#8A857A] mt-2">
+              Pour le QR code de vérification, écrivez simplement <code>{"{%qrcode}"}</code> (avec le signe %)
+              à l'endroit du document où il doit apparaître — comme un champ de texte normal, pas besoin d'image.
             </p>
           </div>
 
