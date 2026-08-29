@@ -270,7 +270,12 @@ export default function DocumentsPage() {
         getSize: () => [90, 90],
       });
 
-      const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, modules: [imageModule] });
+      const doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: "{{", end: "}}" },
+        modules: [imageModule],
+      });
       const data = {};
       (activeTemplate.fields || []).forEach((f) => {
         const raw = values[f.key];
@@ -720,7 +725,7 @@ function NewTemplateModal({ services, onClose, onSaved }) {
               La référence du document est disponible via <code>{"{{reference}}"}</code>.
             </p>
             <p className="text-[11px] text-[#8A857A] mt-2">
-              Pour le QR code de vérification, écrivez simplement <code>{"{%qrcode}"}</code> (avec le signe %)
+              Pour le QR code de vérification, écrivez simplement <code>{"{{%qrcode}}"}</code> (avec le signe %)
               à l'endroit du document où il doit apparaître — comme un champ de texte normal, pas besoin d'image.
             </p>
           </div>
