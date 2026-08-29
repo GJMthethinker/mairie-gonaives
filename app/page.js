@@ -147,14 +147,20 @@ export default function HomePage() {
             <h2 className="stagger-in font-display text-2xl text-[#034E28]">La Mairie en action</h2>
             <a href="/galerie" className="stagger-in link-underline text-sm text-[#034E28] font-medium">Voir la galerie →</a>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {gallery.map((img, i) => (
               <button
                 key={img.id || i}
                 onClick={() => setLightbox({ src: img.image_url, alt: img.caption || "" })}
-                className="stagger-in img-zoom overflow-hidden rounded-sm border border-[var(--line)] aspect-[4/5] card-hover text-left"
+                className="stagger-in card-hover text-left rounded-3xl overflow-hidden p-3"
+                style={{ background: "#034E28" }}
               >
-                <img src={img.image_url} alt={img.caption || ""} className="w-full h-full object-cover" />
+                <div className="img-zoom overflow-hidden rounded-2xl aspect-[4/5]">
+                  <img src={img.image_url} alt={img.caption || ""} className="w-full h-full object-cover" />
+                </div>
+                {img.caption && (
+                  <p className="text-[11px] text-white font-medium mt-2 px-1 truncate">{img.caption}</p>
+                )}
               </button>
             ))}
           </div>
@@ -175,11 +181,11 @@ export default function HomePage() {
                 <button
                   key={n.id}
                   onClick={() => n.image_url && setLightbox({ src: n.image_url, alt: n.title })}
-                  className="stagger-in card-hover text-left rounded-sm overflow-hidden p-4"
+                  className="stagger-in card-hover text-left rounded-3xl overflow-hidden p-4"
                   style={{ background: "#034E28" }}
                 >
                   {n.image_url && (
-                    <div className="img-zoom overflow-hidden rounded-sm mb-4">
+                    <div className="img-zoom overflow-hidden rounded-2xl mb-4">
                       <img src={n.image_url} alt={n.title} className="w-full h-48 object-cover" />
                     </div>
                   )}
@@ -202,7 +208,7 @@ export default function HomePage() {
           <div className="grid sm:grid-cols-3 gap-4">
             <button
               onClick={() => setActiveForm("rdv")}
-              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
+              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-2xl p-5"
             >
               <CalendarIcon />
               <p className="font-medium text-sm mt-3">Prendre rendez-vous</p>
@@ -210,7 +216,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveForm("doleance")}
-              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
+              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-2xl p-5"
             >
               <MessageIcon />
               <p className="font-medium text-sm mt-3">Laisser un message</p>
@@ -218,7 +224,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveForm("engagement")}
-              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-sm p-5"
+              className="stagger-in card-hover btn-press text-left bg-white border border-[var(--line)] rounded-2xl p-5"
             >
               <HeartIcon />
               <p className="font-medium text-sm mt-3">Proposer mon aide</p>
