@@ -448,6 +448,49 @@ export default function BadgesPage() {
     XLSX.writeFile(wb, "identifiants-employes-CONFIDENTIEL.xlsx");
   }
 
+  /* ---------- photos en lot : le nom du fichier doit correspondre à « NOM Prénom » (ou au matricule) ---------- */
+  async function onBulkPhotos(e) {
+    const files = [...(e.target.files || [])];
+    e.target.value = "";
+    if (!files.length) return;
+    setMsg(null);
+    const cle = (t) => norm(t).split(" ").filter(Boolean).sort().join(" ");
+    const parNom = new Map();
+    const homonymes = new Set();
+    badges.forEach((b) => {
+      const k = cle(`${b.prenom} ${b.nom}`);
+      if (parNom.has(k)) homonymes.add(k);
+      parNom.set(k, b);
+    });
+    const parMatricule = new Map(badges.map((b) => [norm(b.matricule), b]));
+    let ok = 0;
+    const sansBadge = [];
+    const erreurs = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const base = f.name.replace(/\.[^.]+$/, "");
+      const k = cle(base);
+      const b = (!homonymes.has(k) && parNom.get(k)) || parMatricule.get(norm(base));
+      if (!b) {
+        sansBadge.push(f.name);
+        continue;
+      }
+      setBusy(`Photos : ${i + 1} / ${files.length}…`);
+      try {
+        await uploadPhoto(b, f);
+        ok++;
+      } catch (err) {
+        erreurs.push(`${f.name} : ${err.message}`);
+      }
+    }
+    setBusy("");
+    let text = `${ok} photo(s) associée(s) sur ${files.length}.`;
+    if (sansBadge.length) text += ` Aucun badge trouvé pour : ${sansBadge.join(", ")}.`;
+    if (erreurs.length) text += ` Erreurs : ${erreurs.join(" ; ")}.`;
+    setMsg({ type: ok === files.length ? "ok" : "err", text });
+    await load();
+  }
+
   /* ---------- aperçu et impression ---------- */
   async function qrOf(b) {
     return QRCode.toDataURL(badgeUrl(b), { errorCorrectionLevel: "M", margin: 0, width: 600 });
@@ -547,6 +590,10 @@ export default function BadgesPage() {
           <button className={btn} onClick={downloadTemplate}>
             Modèle Excel
           </button>
+          <label className={btn + " cursor-pointer"} title="Nommez chaque photo « NOM Prénom.jpg »">
+            Importer les photos
+            <input type="file" accept="image/*" multiple className="hidden" onChange={onBulkPhotos} />
+          </label>
         </div>
       </div>
 
