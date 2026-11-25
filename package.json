@@ -17,7 +17,8 @@
     "docxtemplater-image-module-free": "^1.1.1",
     "pizzip": "^3.1.7",
     "qrcode": "^1.5.3",
-    "jsqr": "^1.4.0"
+    "jsqr": "^1.4.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.0",
