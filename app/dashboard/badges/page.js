@@ -542,7 +542,7 @@ export default function BadgesPage() {
           </button>
           <label className={btn + " cursor-pointer"}>
             Importer un fichier Excel
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onImportFile} />
+            <input type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportFile} />
           </label>
           <button className={btn} onClick={downloadTemplate}>
             Modèle Excel
