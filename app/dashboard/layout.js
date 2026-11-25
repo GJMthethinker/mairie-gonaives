@@ -163,7 +163,7 @@ export default function DashboardLayout({ children }) {
     { href: "/dashboard/galerie", label: "Galerie" },
     { href: "/dashboard/annonces", label: "Annonces" },
     { href: "/dashboard/annuaire", label: "Annuaire" },
-    ...(isAdmin ? [{ href: "/dashboard/employes", label: "Employés" }] : []),
+    ...(isAdmin ? [{ href: "/dashboard/employes", label: "Employés" }] : []),...(isAdmin ? [{ href: "/dashboard/badges", label: "Badges" }] : []),
     ...(isAdmin ? [{ href: "/dashboard/export", label: "Export" }] : []),
   ];
 
